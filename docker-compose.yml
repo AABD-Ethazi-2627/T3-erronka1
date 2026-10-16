@@ -42,7 +42,7 @@ services:
 
   # ── Apache NiFi — Transformazioa eta bideratzea ──────────────────────────────
   nifi:
-    image: apache/nifi:1.23.2
+    image: apache/nifi:latest
     container_name: cnc-nifi
     ports:
       - "8443:8443" # Web Interfazea (https://localhost:8443)
