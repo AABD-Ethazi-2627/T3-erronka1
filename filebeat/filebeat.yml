@@ -14,7 +14,7 @@ filebeat.inputs:
 
     # CSV fitxategiek goiburu-lerro bat dute (zutabe-izenak).
     # Lerro hori ez bidali Kafka-ra — nola iragazi?
-    exclude_lines: ['^machine_id']
+    exclude_lines: ['^timestamp']
 
     # NFS-ekin lan egiten ari garenez, fitxategi-jarraipena
     # path bidez egin behar da (inodo-aldaketak ekiditeko)
