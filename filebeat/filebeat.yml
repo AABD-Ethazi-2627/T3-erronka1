@@ -8,7 +8,9 @@ filebeat.inputs:
   - type: filestream
     id: cnc-stream
     paths:
-      - /mnt/cnc-stream/*.csv
+      - /*.csv
+      - /*/*.csv
+      - //192.168.75.150/cnc-stream/*.csv
 
     # CSV fitxategiek goiburu-lerro bat dute (zutabe-izenak).
     # Lerro hori ez bidali Kafka-ra — nola iragazi?
