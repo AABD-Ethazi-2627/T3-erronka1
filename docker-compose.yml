@@ -81,17 +81,17 @@ services:
     restart: unless-stopped
 
   # ── Scoring API — ML inferentzia (3. fasea) ──────────────────────────────────
-  scoring-api:
-    build:
-      context: ./scoring
-    container_name: cnc-scoring
-    ports:
-      - "8000:8000" # FastAPI (http://localhost:8000/docs)
-    volumes:
-      - ./models:/models:ro # Modeloa hemen egon behar da: ./models/cnc_failure_model.pkl
-    environment:
-      MODEL_PATH: /models/cnc_failure_model.pkl
-    restart: unless-stopped
+  # scoring-api:
+  #   build:
+  #     context: ./scoring
+  #   container_name: cnc-scoring
+  #   ports:
+  #     - "8000:8000" # FastAPI (http://localhost:8000/docs)
+  #   volumes:
+  #     - ./models:/models:ro # Modeloa hemen egon behar da: ./models/cnc_failure_model.pkl
+  #   environment:
+  #     MODEL_PATH: /models/cnc_failure_model.pkl
+  #   restart: unless-stopped
 
 volumes:
   filebeat-data: # Filebeat registry (zer fitxategi irakurri den gogoratzeko)
