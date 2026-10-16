@@ -34,7 +34,6 @@ services:
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - filebeat-data:/usr/share/filebeat/data
-      # NFS bidez ikasle VM-an /mnt/cnc-stream-en muntatutako karpeta irakurtzeko:
       - /mnt/cnc-stream:/mnt/cnc-stream:ro
     depends_on:
       - kafka
