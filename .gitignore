@@ -1,0 +1,19 @@
+# Entorno virtual de Python
+.venv/
+venv/
+env/
+
+# Archivos generados por Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Variables de entorno y archivos locales
+.env
+.env.*
+!.env.example
+
+
