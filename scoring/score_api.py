@@ -141,11 +141,11 @@ def predict(saria: SentsoreSaria):
 
         prob = float(probabilities[failure_index])
 
-        # 0.35eko atalasea aplikatu.
-        failure_predicted = prob >= 0.35
+        # 0.40ko atalasea aplikatu.
+        failure_predicted = prob >= 0.40
 
         # Alert maila zehaztu
-        if prob < 0.35:
+        if prob < 0.40:
             alert_level = "OK"
         elif prob <= 0.80:
             alert_level = "KONTUZ"
