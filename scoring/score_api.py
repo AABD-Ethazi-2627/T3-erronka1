@@ -8,21 +8,42 @@ Helburua: NiFi-k InvokeHTTP bidez deitzen dio fase 3an.
 
 import os
 import logging
+import time
 from contextlib import asynccontextmanager
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Depends, Security, status
+from fastapi.security import APIKeyHeader
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [SCORING] %(message)s")
 log = logging.getLogger(__name__)
 
 MODEL_PATH = os.getenv("MODEL_PATH", "../models/cnc_failure_model.pkl")
+API_KEY_SECRET = os.getenv("API_KEY_SECRET", "super-secret-key-change-in-prod")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def check_api_key(api_key: str = Security(api_key_header)):
+    if not api_key or api_key != API_KEY_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Baimenik gabeko sarbidea."
+        )
+    return api_key
+
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:5173",
+    ).split(",")
+    if origin.strip()
+]
 
 # Modeloa aplikazio-abieran behin kargatzen da (ez eskaera bakoitzean)
-model = joblib.load(MODEL_PATH)
-
+model = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,7 +62,6 @@ async def lifespan(app: FastAPI):
 
     yield
 
-
 app = FastAPI(
     title="CNC Guard Scoring API",
     description="Predictive maintenance — hutsegite-probabilitate prediktorea",
@@ -49,19 +69,35 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Mugatu gabeko jatorrietara mugatzen da CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+    expose_headers=["X-Process-Time"],
+)
+
+@app.middleware("http")
+async def prozesatzeko_denbora(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    response.headers["X-Process-Time"] = str(time.perf_counter() - start)
+    return response
+
 
 # ── Eskema ────────────────────────────────────────────────────────────────────
 
 
 class SentsoreSaria(BaseModel):
-    timestamp: str
-    machine_id: str
-    machine_type: str = Field(pattern="^[LMH]$")
-    air_temp_K: float
-    process_temp_K: float
-    rpm: int
-    torque_Nm: float
-    tool_wear_min: int
+    timestamp: str = Field(..., max_length=50)
+    machine_id: str = Field(..., pattern="^CNC-[0-9]{3}$")
+    machine_type: str = Field(..., pattern="^[LMH]$")
+    air_temp_K: float = Field(..., ge=200.0, le=400.0)
+    process_temp_K: float = Field(..., ge=200.0, le=400.0)
+    rpm: int = Field(..., ge=0, le=10000)
+    torque_Nm: float = Field(..., ge=0.0, le=500.0)
+    tool_wear_min: int = Field(..., ge=0, le=1000)
 
 
 class Predikzioa(BaseModel):
@@ -75,12 +111,11 @@ class Predikzioa(BaseModel):
 
 
 @app.get("/health")
-def health():
+def health(api_key: str = Depends(check_api_key)):
     return {"status": "ok", "model_loaded": model is not None, "model_path": MODEL_PATH}
 
-
 @app.post("/predict", response_model=Predikzioa)
-def predict(saria: SentsoreSaria):
+def predict(saria: SentsoreSaria, api_key: str = Depends(check_api_key)):
     try:
         if model is None:
             raise HTTPException(status_code=503, detail="Eredua ez dago kargatuta.")
@@ -135,10 +170,8 @@ def predict(saria: SentsoreSaria):
         # Interferentzia egin
         # Ereduarekin hutsegite-probabilitatea kalkulatu.
         probabilities = model.predict_proba(input_data)[0]
-
         classes = list(model.classes_)
         failure_index = classes.index(1)
-
         prob = float(probabilities[failure_index])
 
         # 0.40ko atalasea aplikatu.
@@ -164,4 +197,7 @@ def predict(saria: SentsoreSaria):
 
     except Exception as e:
         log.exception(f"Errorea predikzioa egitean: {e}")
-        raise HTTPException(status_code=500, detail=f"Errorea inferentzian: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Errorea barne prozesamenduan."
+        )

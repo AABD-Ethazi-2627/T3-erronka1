@@ -91,6 +91,8 @@ services:
       - ./models:/models:ro
     environment:
       MODEL_PATH: /models/cnc_failure_model.pkl
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      API_KEY_SECRET: super-secret-key-change-in-prod
     restart: unless-stopped
 
 volumes:
