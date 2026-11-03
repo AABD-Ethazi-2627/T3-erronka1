@@ -269,40 +269,39 @@ erabakitzen du kasua hutsegite gisa sailkatu behar den ala ez. Atalase
 lehenetsia `0.5` da. Atalasea `0.4`ra jaitsiz gero, eredua hutsegiteak
 detektatzeko sentikorragoa izan daiteke.
 
-0,4ko atalasearekin lortutako sailkapen-txostena:
+Atalaseak balidazio-multzo berean alderatu dira. Ondorengo taulan hutsegiteen
+klaseari dagozkion metrikak agertzen dira. `FN kostu estimatua` kalkulatzeko,
+falsu negatibo bakoitzak gutxienez 1.200 euroko galera eragiten duela hartu da
+hipotesitzat, ordubeteko geldialdiaren kostu gisa. Falsu positiboen mantentze-
+kostua ez da kalkuluan sartu, proiektuan ez baita zehaztu.
 
-``` text
---- Sailkapen-txosten optimizatua (Atalasea 0.4) ---
-
-              precision    recall  f1-score   support
-
-           0       0.99      0.99      0.99      1546
-           1       0.79      0.81      0.80        54
-
-    accuracy                           0.99      1600
-   macro avg       0.89      0.90      0.90      1600
-weighted avg       0.99      0.99      0.99      1600
-```
+| Atalasea | Recall | Precision | F1 | FP | FN | FN kostu estimatua (EUR) |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0,20 | 0,852 | 0,438 | 0,579 | 59 | 8 | 9.600 |
+| 0,30 | 0,833 | 0,634 | 0,720 | 26 | 9 | 10.800 |
+| 0,35 | 0,815 | 0,721 | 0,765 | 17 | 10 | 12.000 |
+| **0,40** | **0,815** | **0,815** | **0,815** | **10** | **10** | **12.000** |
+| 0,50 | 0,796 | 0,878 | 0,835 | 6 | 11 | 13.200 |
 
 **Emaitzen interpretazioa:**
 
--   **Recall = 0,81:** benetako hutsegiteen %81 inguru detektatzen ditu
+-   **Recall = 0,815:** benetako hutsegiteen %81,5 inguru detektatzen ditu
     ereduak.
--   **Precision = 0,79:** hutsegite gisa iragarritako kasuen %79 inguru
+-   **Precision = 0,815:** hutsegite gisa iragarritako kasuen %81,5 inguru
     benetako hutsegiteak dira.
--   **F1-score = 0,80:** precision eta recall balioak nahiko orekatuak
-    dira hutsegiteen klasean.
--   **Accuracy = 0,99:** iragarpenen %99 inguru zuzenak dira, baina
-    metrika hau ez da nahikoa ereduaren kalitatea ebaluatzeko,
-    hutsegiteak oso gutxi direlako.
+-   **F1-score = 0,815:** precision eta recall balioak orekatzen dituen
+    metrika da.
+-   **Accuracy:** ez da erabaki nagusirako nahikoa, hutsegiteak gutxiengoa
+    direlako.
 
-Precision eta recall balioak biribilduak direnez, ezin dira horietatik
-nahasmen-matrizeko balio zehatzak ondorioztatu.
-
-**Ondorioa:** 0,4ko atalasearekin, ereduak hutsegiteen detekzioan recall
-ona lortzen du, eta precision ere nahiko altua da. Hala ere, oraindik
-badago detektatzen ez den hutsegiteen ehuneko bat. Atalase hau mantendu
-aurretik, beste atalase batzuetako emaitzak alderatzea komeni da.
+0,50eko atalaseak F1-score zertxobait handiagoa lortzen du, baina recall
+txikiagoa ere badu: 0,796. Proiektu honetan falsu negatibo batek fabrikaren
+geldialdia eragin dezakeenez, recall-a precision edo F1-score hutsa baino
+garrantzitsuagoa da. Horregatik aukeratu da **0,40**: 0,35ekin alderatuta
+precision-a 0,721etik 0,815era igotzen du, FP kopurua 17tik 10era jaisten
+du, eta recall-a 0,815ean mantentzen du. Horrela, 0,40 da sistemaren azken
+atalasea, ez metrika guztietan onena delako, baizik eta negozio-arriskuarekin
+bat datorren oreka eskaintzen duelako.
 
 ## 6. Ezaugarrien garrantzia
 
