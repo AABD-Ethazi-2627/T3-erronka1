@@ -46,8 +46,8 @@ services:
     ports:
       - "8443:8443" # Web Interfazea (https://localhost:8443)
     environment:
-      - SINGLE_USER_CREDENTIALS_USERNAME=admin
-      - SINGLE_USER_CREDENTIALS_PASSWORD=adminpassword123
+      - SINGLE_USER_CREDENTIALS_USERNAME=${NIFI_USER}
+      - SINGLE_USER_CREDENTIALS_PASSWORD=${NIFI_PASSWORD}
       - NIFI_WEB_HTTPS_PORT=8443
     depends_on:
       - kafka
@@ -62,7 +62,8 @@ services:
       - "9200:9200"
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     volumes:
       - es-data:/usr/share/elasticsearch/data
@@ -76,6 +77,8 @@ services:
       - "5601:5601"
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=${ELASTIC_USER}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
     depends_on:
       - elasticsearch
     restart: unless-stopped
@@ -92,7 +95,7 @@ services:
     environment:
       MODEL_PATH: /models/cnc_failure_model.pkl
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173
-      API_KEY_SECRET: super-secret-key-change-in-prod
+      API_KEY_SECRET: ${API_KEY_SECRET}
     restart: unless-stopped
 
 volumes:
