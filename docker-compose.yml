@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   # ── Kafka — Mezularitza bufferra (KRaft mode, zookeeper gabe) ────────────────
@@ -25,16 +23,15 @@ services:
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     restart: unless-stopped
 
-  # ── Filebeat — CSV fitxategien irakurlea ─────────────────────────────────────
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.1
     container_name: cnc-filebeat
-    command: filebeat -e -strict.perms=false
-    user: root
+    user: root # <-- Añadir esta línea
+    command: ["filebeat", "-e", "--strict.perms=false"]
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - filebeat-data:/usr/share/filebeat/data
-      - /mnt/cnc-stream:/mnt/cnc-stream:ro
+      - cnc-stream-cifs:/mnt/cnc-stream:ro
     depends_on:
       - kafka
     restart: unless-stopped
@@ -44,7 +41,7 @@ services:
     image: apache/nifi:latest
     container_name: cnc-nifi
     ports:
-      - "8443:8443" # Web Interfazea (https://localhost:8443)
+      - "8443:8443"
     environment:
       - SINGLE_USER_CREDENTIALS_USERNAME=${NIFI_USER}
       - SINGLE_USER_CREDENTIALS_PASSWORD=${NIFI_PASSWORD}
@@ -100,5 +97,11 @@ services:
     restart: unless-stopped
 
 volumes:
-  filebeat-data: # Filebeat registry (zer fitxategi irakurri den gogoratzeko)
-  es-data: # Elasticsearch datuen iraunkortasuna
+  filebeat-data:
+  es-data:
+  cnc-stream-cifs: # Nombre unificado con el servicio filebeat
+    driver: local
+    driver_opts:
+      type: cifs
+      o: "username=cncuser,password=cncuser,vers=3.0,ro"
+      device: "//192.168.75.150/cnc-stream"
