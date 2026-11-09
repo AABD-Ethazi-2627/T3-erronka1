@@ -277,12 +277,80 @@ Bestalde, `machine_id` eta `machine_type` aldagaiek makinak identifikatzeko eta 
 - Datuen ingestioan, erregistro bakoitzaren denbora-zigilua eta makinaren identifikatzailea mantentzen dira, ondorengo monitorizazioa eta trazabilitatea bermatzeko.
 
 CSV formatua aukeratu da datuak modu sinple eta egituratuan gordetzeko, baita Filebeat, Apache Kafka eta Apache NiFi bezalako tresnekin erraz integratzeko ere.
+
 ### 2.2. Filebeat: konfigurazioa, iragazketa eta egoeraren erregistrua
+Proiektu honetan, Filebeat datuak biltzeko eragile arin gisa (lightweight shipper) erabiltzen da. Bere eginkizun nagusia sentsoreek sortutako CSV fitxategiak irakurtzea eta, ia denbora errealean, Apache Kafkara bidaltzea da, datuen prozesamendu-fluxuarekin jarraitzeko.
 
 ### 2.3. Apache Kafka: broker-a, topic-ak (`cnc-sensors-raw`), partizioak eta kontsumitzaile-taldeak
+Proiektu honetan, Apache Kafka datuen ingestio-fluxuaren ardatz nagusia edo *broker*-a da. Bere funtzio nagusia sentsoreen datu gordinak denbora errealean jasotzea eta prozesamendu-sistemek (Apache NiFi) kontsumitu ditzaten eskuragarri jartzea da.
+
+Datuen jarioa honela egituratzen da Kafkaren inguruan:
+
+- **Datuen sarrera (Filebeat):** Filebeat tresna konfiguratuta dago sentsoreen CSV datuak irakurri eta Kafkako `cnc-sensors-raw` izeneko *topic*-era bidaltzeko.
+- **Datuen irteera (NiFi):** Apache NiFi-k `ConsumeKafka` prozesadorea erabiltzen du *topic* horretatik datuak irakurtzeko. Irakurketa hau `cnc-nifi` izeneko kontsumitzaile-taldearen (Group ID) bidez egiten da, mezuak behin bakarrik eta modu ordenatuan prozesatzen direla bermatzeko.
+
+#### Topic-aren sorrera
+
+Sentsoreen informazioa bideratzeko `cnc-sensors-raw` *topic*-a sortu behar da. Egitura honetan 3 partizio definitu dira datuen irakurketa paraleloa ahalbidetzeko, eta erreplikazio-faktorea 1 gisa utzi da, nodo bakarreko kluster batean baikaude.
+
+Horretarako, honako komando hau exekutatu dugu terminalean (Docker edukiontziaren kanpotik):
+
+```bash
+# Terminala abiarazi
+docker exec -it cnc-kafka bash
+```
+
+```bash
+kafka-topics --create --topic cnc-sensors-raw --partitions 3 --replication-factor 1 --bootstrap-server localhost:9092
+```
+
+#### Konfigurazioaren egiaztapena
+Topic-a behar bezala sortu dela eta partizio nahiz erreplikazio datuak zuzenak direla egiaztatzeko, describe komandoa erabili da:
+```bash
+kafka-topics --describe --topic cnc-sensors-raw --bootstrap-server localhost:9092
+```
+Komando honek topic-aren egoera orokorra eta partizio bakoitzaren nodo liderra zein den erakusten du, dena prest dagoela ziurtatuz ingestioarekin hasteko.
 
 ### 2.4. Apache NiFi: hasierako ingestio-flow-a eta Controller Service-ak
+Proiektu honetan Apache NiFi erabili dugu datuen fluxu osoa kudeatzeko, sentsoreetatik Elasticsearch-era eta Machine Learning eredura bideratuz. Bi fluxu nagusi diseinatu dira (1. fasea eta 3. fasea), baina **3. faseko fluxuak 1. faseko ingestio-prozesu bera biltzen du bere baitan**. 
 
+Jarraian, prozesu osoaren arkitektura eta osagaiak zehazten dira.
+
+### *1. Ingestio-fluxuaren oinarria (1. Fasea)*
+
+3. faseko fluxuaren lehen zatia hasierako ingestio-fluxuaren (*fase1_ingest.json*) kopia zehatza da. Helburua Kafkatik datu gordinak irakurri eta Elasticsearch-en gordetzea da. Urrats hauek jarraitzen ditu:
+
+1.  **`ConsumeKafka`:** Kafkako `cnc-sensors-raw` *topic*-era harpidetzen da datuak denbora errealean jasotzeko.
+2.  **`ConvertRecord`:** Kafkatik jasotako CSV formatuko datuak JSON formatura bihurtzen ditu, prozesamendua errazteko (`CSVReader` eta `JsonRecordSetWriter` erabiliz).
+3.  **`RouteOnAttribute`**: Iragazki sinple bat aplikatzen du datu hutsak edo baliogabeak baztertzeko (`${fileSize:gt(0)}`).
+4.  **`PutElasticsearchJson`**: Datu gordinak (*raw*) Elasticsearch-eko `cnc-sensors` indizean gordetzen ditu zuzenean.
+
+### *2. Streaming eta Iragarpen Fluxu Aurreratua (3. Fasea)*
+
+Behin datu gordinak prozesatuta eta gordeta (aurreko atalean bezala), fluxuak bide berri bat irekitzen du datu horiek denbora errealean Machine Learning API-ra bidaltzeko eta emaitzen arabera ekintzak burutzeko (*fase3_streaming.json*).
+
+Fase honetako prozesadore nagusiak hauek dira:
+
+#### A) Datuen prestaketa API-rako
+*   **`EvaluateJsonPath`**: Datuen fluxutik beharrezko eremuak ateratzen ditu (`machine_id`, `machine_type`, `timestamp`) eta atributu gisa gordetzen ditu.
+*   **`JoltTransformJSON`**: JSON mezuaren egitura eraldatzen du, Scoring API-ak (FastAPI) eskatzen duen formatu zehatzera egokituz.
+
+#### B) Machine Learning Ereduari deia
+*   **`InvokeHTTP` (Scoring API)**: API-ari `POST` eskaera bat egiten dio datuekin (`http://scoring-api:8000/predict`). Segurtasunerako `X-API-Key` bat bidaltzen du goiburukoan.
+*   **`EvaluateJsonPath`**: API-ak itzultzen duen erantzunetik iragarpenaren emaitzak erauzten ditu: `failure_predicted`, `failure_probability` eta `alert_level`.
+
+#### C) Bideratzea eta Biltegiratzea (Emaitzen arabera)
+Iragarpenaren emaitza aztertu ondoren, **`RouteOnAttribute`** prozesadore baten bidez (egoeraren arabera) fluxua hainbat adarretan banatzen da:
+
+*   **`PutElasticsearchJson OK`**: Makinak ondo funtzionatzen badu, datuak `cnc-prediction2` indizean gordetzen dira.
+*   **`PutElasticsearchJson FALLOS`**: Makinan anomalia bat edo akats bat aurreikusten bada, informazioa `cnc-error2` indizean gordetzen da.
+*   **`UpdateRecord` & `PutElasticsearchJson (Silver)`**: Tenperaturak Kelvinetik Celsius gradutara eraldatzen dira eta datu garbiagoak `cnc-silver` indizean gordetzen dira, gerora analisi historikoa egiteko.
+
+#### D) Alerta Sistema (Telegram)
+API-ak makina baten hutsegite arriskua detektatzen badu, denbora errealeko abisuak bidaltzen dira mantentze-taldeko Telegram kanalera:
+
+*   **`ReplaceText KONTUZ` / `LARRIA`**: Iragarritako alerta-mailaren arabera (KONTUZ edo LARRIA), Telegramerako mezu formatu berezi bat (Markdown) sortzen du, makinaren ID-a, data eta egoera txertatuz.
+*   **`InvokeHTTP TELEGRAM`**: Telegramen API ofizialera deitzen du bot baten bidez (`/sendMessage`), abisua mantentze-taldearen txatean berehala ager dadin.
 ## 3. DATUEN AZTERKETA ESPLORATZAILEA (EDA) ETA AURREPROZESATZEA
 
 ### 3.1. Entrenamendu-datasetaren azterketa (`ai4i2020_train.csv`)
@@ -312,18 +380,86 @@ CSV formatua aukeratu da datuak modu sinple eta egituratuan gordetzeko, baita Fi
 ### 4.7. Ezaugarrien garrantzia (Feature Importance) eta ereduaren biltegiratzea (`.pkl`)
 
 ## 5. SCORING APIA ETA ML INFERENTZIA ZERBITZUA
+Proiektu honen bihotz prediktiboa Scoring API-a da. FastAPI bidez eraikitako mikrozerbitzu honek sentsoreen datu gordinak jasotzen ditu, denbora errealean prozesatzen ditu eta entrenatutako Machine Learning ereduaren (Random Forest) bidez hutsegite-probabilitatea itzultzen du. Emaitza hauek NiFi-k (3. fasean) erabiltzen ditu alertak bideratzeko.
 
 ### 5.1. FastAPI bidezko mikrozerbitzuaren arkitektura eta egitura
+APIa **FastAPI** framework-aren bidez garatu da, bere errendimendu altuagatik eta asinkronismoa kudeatzeko duen erraztasunagatik ezaguna. Zerbitzari gisa **Uvicorn** erabiltzen da.
+Arkitektura RESTful ereduan oinarritzen da, eta mikrozerbitzu isolatu gisa pentsatuta dago. Horrek esan nahi du bere ardura bakarra (Single Responsibility Principle) inferentzia egitea dela. 
+
+Kodean CORS (Cross-Origin Resource Sharing) middleware bat ezarri da (`CORSMiddleware`), baimendutako jatorrietatik (`localhost:3000` edo ingurune-aldagai bidez definitutakoetatik) soilik onartzeko eskaerak. Gainera, prozesamendu-denbora neurtzeko middleware pertsonalizatu bat ere barneratu da (`X-Process-Time` goiburukoa itzuliz), inferentziaren latentzia denbora errealean monitorizatzeko.
 
 ### 5.2. Ereduaren karga dinamikoa eta Pydantic balidazioa (`SentsoreSaria`)
+fizientzia bermatzeko, Machine Learning eredua (`cnc_failure_model.pkl`) ez da eskaera bakoitzean kargatzen. FastAPI-ren `@asynccontextmanager` eta `lifespan` funtzioak erabiliz, eredua memorian behin bakarrik kargatzen da aplikazioa abiaraztean. 
+
+Datuen kalitatea bermatzeko, **Pydantic** liburutegia erabili da datuen balidaziorako. `SentsoreSaria` klaseak (BaseModel) sarrerako datuen egitura eta mugak zehazten ditu zorrozki:
+* **Formatu-balidazioak:** `machine_id` eremuak patroi zehatz bat bete behar du (`^CNC-[0-9]{3}$`), eta `machine_type`-ak 'L', 'M' edo 'H' izan behar du.
+* **Muga fisikoen balidazioak:** Sentsoreen balioek muga logikoak izan behar dituzte (`rpm` 0 eta 10000 artean, tenperaturak 200.0 eta 400.0 artean, etab.).
+
+Honek sistemaren babes-lehen-lerro gisa funtzionatzen du: datu anomaloak edo ustelak (adibidez, tenperatura negatibo ezinezko bat) eredura iritsi aurretik baztertzen dira, "Zaborra sartu, zaborra atera" (Garbage In, Garbage Out) arazoa ekidinez.
 
 ### 5.3. Ezaugarri eratorrien kalkulua eta ezaugarri-ordenaren koherentzia
+Eredu prediktiboak ez ditu sentsoreen datu gordinak bakarrik erabiltzen. Inferentzia egin aurretik, `/predict` endpoint-ak *Feature Engineering* (ezaugarrien ingeniaritza) aplikatzen du Pandas erabiliz. Aldagai eratorri hauek kalkulatzen dira bertan, entrenamendu-fasean egin zen bezalaxe:
+* `power`: `rpm` * `torque_Nm`
+* `temp_diff`: `process_temp_K` - `air_temp_K`
+* `torque_wear`: `torque_Nm` * `tool_wear_min`
+* One-hot encoding `machine_type` aldagaiarentzat (`machine_type_L`, `machine_type_M`).
+
+**Koherentzia kritikoa:** Eredu bat ustiatzean ematen den errore ohikoena zutabeen ordenaren aldaketa da. Kodean mekanismo bat ezarri da `model.feature_names_in_` erabiliz. Honek sarrerako DataFrame-ko zutabeak berrantolatzen ditu ereduak entrenamenduan ikasi zuen **ordena zehatzera**, eta falta den ezaugarririk balego (500 errorea emanez) abisatzen du. 
 
 ### 5.4. Atalase operatiboa eta alerta-mailen definizioa (OK, KONTUZ, LARRIA)
+Ereduak `predict_proba()` bidez hutsegite bat gertatzeko *probabilitatea* itzultzen du (0.0 - 1.0 bitartean). Makina bat noiz gelditu erabakitzeko probabilitate hori kategoria bihurtu behar da.
+
+* **Atalase nagusia (Threshold):** `0.40` (edo %40) ezarri da. Probabilitatea >= 0.40 bada, `failure_predicted = True` izango da. Atalase hau kontserbadorea da, industriako mantentze prediktiboan hobe baita aurreikuspen faltsu positibo bat (makina berrikustea ondo egon arren) makina baten apurketa garesti bat jasatea baino.
+* **Alerta-mailak (`alert_level`):** Erakundeko komunikazioa (Telegram bidezkoa) kudeatzeko, probabilitatearen arabera hiru maila semaforiko sortu dira:
+    * **OK:** prob < 0.40. Funtzionamendu normala.
+    * **KONTUZ:** 0.40 <= prob <= 0.80. Berrikuspen programatua behar da.
+    * **LARRIA:** prob > 0.80. Makinaren berehalako gelditzea eta ikuskapen kritikoa gomendatzen da.
 
 ### 5.5. APIaren autentifikazioa eta segurtasuna (`X-API-Key`)
+#### Segurtasun Logikoa (X-API-Key)
+API-ak informazio industriala jasotzen duenez, ez da publikoa izan behar. Segurtasuna bermatzeko `X-API-Key` goiburukoa ezarri da FastAPI-ren `Security` moduluaren bidez. Baimendutako sistemei (kasu honetan NiFi eta Telegram bot-en atzealdeari) pasahitza eskatzen zaie. Erantzuna ezeztatuko da (403 HTTP) gako hori zehatza ez bada.
+
+#### Adimen Artifizialeko Ereduen Segurtasuna eta Etika
+Sistema prediktibo industrial batek hainbat arau eta praktika on bete behar ditu AAren inplementazio seguru baterako:
+
+1. **Security by Design (Diseinuzko Segurtasuna):**
+   * *Data Validation (Poisoning ekiditea):* Pydantic-ek ezarritako mugek (adibidez, RPM 10000tik behera) ekiditen dute "Data Poisoning" edo sarrera gaiztoen erasoak, non erasotzaile batek datu izugarri handiak bidaliko lituzkeen eredua zoratu edo ukapen-zerbitzu (DoS) bat eragiteko.
+   * *Ereduaren Karga Segurua:* `.pkl` (pickle) fitxategiak desestaltzea arriskutsua izan daiteke kode arbitrarioa exekuta dezaketelako. Hori ekiditeko, eredua bide lokal eta isolatu batetik soilik kargatzen da (`MODEL_PATH`), eta kanpoko inork ezin du modeloa gainidatzi Docker irudiaren baimenik gabe.
+
+2. **Marko Legala eta Gardentasuna (AI Act / GDPR):**
+   * EBko Adimen Artifizialaren Legeari (AI Act) jarraiki, industria-kontrolerako sistemak "arrisku handiko" (High-Risk) sailka daitezke. API honek `logging` bidezko erregistro sakona du. Eskaera bakoitza eta ereduaren erabakia erregistratzen dira, auditagarritasuna eta trazabilitatea ahalbidetuz. Ereduak erabaki "opaku" bat hartzen badu, zergatia Pandas-ek kalkulatutako ezaugarri zehatzetan (Power, Torque) mapa daiteke.
+
+3. **Alborapenak (Biases):**
+   * Makina mota ezberdinen artean (`L` - Low, `M` - Medium, `H` - High) alborapenik ez gertatzeko, eredua ezaugarri espezifiko hauek kontuan hartuz elikatu da (One-Hot Encoding bidez). Horrela, sistemak ez du makina indartsuago bat (H) akatstduntzat hartuko berezko tenperatura edo Torque balio altuagoak izateagatik, makinaren testuingurua ulertzen baitu.
 
 ### 5.6. Dockerizazioa eta egiaztapen-probak (`curl`, `/health` eta `/predict`)
+APIa plataformarekiko independentea izan dadin, Docker bidez ontziratu da `python:3.11-slim` irudi arina erabiliz. Dockerfile-ak beharrezko mendekotasunak instalatzen ditu (`requirements.txt`) eta Uvicorn zerbitzaria abiarazten du 8000 portuan.
+
+**Egiaztapen probak (curl):**
+
+Ingurunea behar bezala dabilela eta ereduak kargatu direla ziurtatzeko, ondorengo deia egin daiteke (`/health`):
+```bash
+curl -X GET "http://localhost:8000/health" -H "X-API-Key: CNCGuard_Guadalquia_Key_2026_x89a01!"
+```
+Erantzun espero dena: `{"status":"ok","model_loaded":true,"model_path":"../models/cnc_failure_model.pkl"}`
+
+Predikzio bat egiteko simulazioa (`/predict`):
+```bash
+curl -X POST "http://localhost:8000/predict" \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: CNCGuard_Guadalquia_Key_2026_x89a01!" \
+     -d '{
+           "timestamp": "2024-05-15 10:30:00",
+           "machine_id": "CNC-042",
+           "machine_type": "M",
+           "air_temp_K": 298.1,
+           "process_temp_K": 308.6,
+           "rpm": 1551,
+           "torque_Nm": 42.8,
+           "tool_wear_min": 46
+         }'
+```
+Erantzuna JSON formatuan itzuliko da, makinak akatsik aurreikusten duen, kalkulatutako probabilitatea zenbatekoa den eta dagokion alerta-maila azalduz.
 
 ## 6. DENBORA ERREALEKO PIPELINEAREN INTEGRAZIOA ETA ALERTA-SISTEMA
 
