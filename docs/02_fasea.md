@@ -264,44 +264,63 @@ eragin baititzakete.
 
 ### 5.3. Atalasearen doikuntza
 
-Ereduak probabilitateak kalkulatzen ditu, eta atalase baten arabera
-erabakitzen du kasua hutsegite gisa sailkatu behar den ala ez. Atalase
-lehenetsia `0.5` da. Atalasea `0.4`ra jaitsiz gero, eredua hutsegiteak
-detektatzeko sentikorragoa izan daiteke.
+Ereduak probabilitateak kalkulatzen ditu, eta atalase baten arabera erabakitzen du kasua hutsegite gisa sailkatu behar den ala ez. Atalase lehenetsia `0.5` da. Atalase hori aldatuz gero, ereduaren hutsegiteak detektatzeko gaitasuna eta alarma faltsuen kopurua alda daitezke.
 
-Atalaseak balidazio-multzo berean alderatu dira. Ondorengo taulan hutsegiteen
-klaseari dagozkion metrikak agertzen dira. `FN kostu estimatua` kalkulatzeko,
-falsu negatibo bakoitzak gutxienez 1.200 euroko galera eragiten duela hartu da
-hipotesitzat, ordubeteko geldialdiaren kostu gisa. Falsu positiboen mantentze-
-kostua ez da kalkuluan sartu, proiektuan ez baita zehaztu.
+Atalase desberdinak balidazio-multzo berean alderatu dira, eta hutsegiteen klaseari dagozkion metrikak aztertu dira. Horrez gain, atalase bakoitzaren eragin ekonomikoa kalkulatu da, foroan emandako kasu praktikoaren batez besteko kostuak kontuan hartuta.
 
-| Atalasea | Recall | Precision | F1 | FP | FN | FN kostu estimatua (EUR) |
-|---:|---:|---:|---:|---:|---:|---:|
-| 0,20 | 0,852 | 0,438 | 0,579 | 59 | 8 | 9.600 |
-| 0,30 | 0,833 | 0,634 | 0,720 | 26 | 9 | 10.800 |
-| 0,35 | 0,815 | 0,721 | 0,765 | 17 | 10 | 12.000 |
-| **0,40** | **0,815** | **0,815** | **0,815** | **10** | **10** | **12.000** |
-| 0,50 | 0,796 | 0,878 | 0,835 | 6 | 11 | 13.200 |
+**Kostuen estimazioa:**
+
+Kasu bakoitzak eragin ekonomiko desberdina du:
+
+- **FN (False Negative):** benetako hutsegite bat detektatzen ez denean gertatzen da. Egoera katastrofikotzat hartzen da, makinak ekoizpen betean huts egin dezakeelako eta ekoizpen-linea gelditu daitekeelako. Geldialdiaren kostua eta premiazko konponketak kontuan hartuta, batez besteko kostua **5.000 €** da.
+- **FP (False Positive):** makinak arazorik ez duen arren, ereduak hutsegite bat dagoela iragartzen du. Horrek alferrikako ikuskapena eta ekoizpenaren eten laburra eragiten ditu. Batez besteko kostua **200 €** da.
+- **TP (True Positive):** benetako hutsegite bat garaiz detektatzen denean gertatzen da. Mantentze prebentiboa egin daiteke, eta apurketa saihestu. Piezen kostua kontuan hartuta, batez besteko kostua **300 €** da.
+- **TN (True Negative):** makinak behar bezala funtzionatzen du eta ereduak egoera hori zuzen sailkatzen du. Ez du kostu gehigarririk eragiten; beraz, kostua **0 €** da.
+
+Kostu horiek erabiliz, atalase bakoitzaren kostu ekonomiko estimatua honako formula honen bidez kalkulatu da:
+
+`Kostu osoa = (FN × 5.000 €) + (FP × 200 €) + (TP × 300 €) + (TN × 0 €)`
+
+**Atalaseen arteko konparazioa:**
+
+Ondorengo taulan atalase bakoitzarekin lortutako metrikak eta nahasmen-matrizeko emaitzetatik kalkulatutako kostu ekonomikoa agertzen dira.
+
+| Atalasea | Recall | Precision | F1 | FP | FN | TP | Kostu osoa (€) |
+| -------: | -----: | --------: | -: | -: | -: | -: | -------------: |
+| 0,20 | 0,852 | 0,438 | 0,579 | 59 | 8 | 46 | 65.600 |
+| 0,30 | 0,833 | 0,634 | 0,720 | 26 | 9 | 45 | 63.700 |
+| 0,35 | 0,815 | 0,721 | 0,765 | 17 | 10 | 44 | 66.600 |
+| **0,40** | **0,815** | **0,815** | **0,815** | **10** | **10** | **44** | **65.200** |
+| 0,50 | 0,796 | 0,878 | 0,835 | 6 | 11 | 43 | 69.100 |
 
 **Emaitzen interpretazioa:**
 
--   **Recall = 0,815:** benetako hutsegiteen %81,5 inguru detektatzen ditu
-    ereduak.
--   **Precision = 0,815:** hutsegite gisa iragarritako kasuen %81,5 inguru
-    benetako hutsegiteak dira.
--   **F1-score = 0,815:** precision eta recall balioak orekatzen dituen
-    metrika da.
--   **Accuracy:** ez da erabaki nagusirako nahikoa, hutsegiteak gutxiengoa
-    direlako.
+- **Recall:** benetako hutsegiteen zer ehuneko detektatzen duen adierazten du. 0,30eko atalasearekin, ereduak benetako hutsegiteen %83,3 detektatzen ditu.
+- **Precision:** hutsegite gisa iragarritako kasuetatik zenbat diren benetako hutsegiteak adierazten du. 0,40ko atalaseak baliorik handiena lortzen du, %81,5ekoa.
+- **F1-score:** precision eta recall metrikak bateratzen dituen neurria da. 0,50eko atalaseak baliorik handiena lortzen du, 0,835ekoarekin.
+- **Accuracy:** ez da erabaki nagusirako nahikoa, hutsegiteak datu-multzoan gutxiengoa direlako. Horregatik, bereziki recall-a, precision-a eta kostu ekonomikoa hartu dira kontuan.
 
-0,50eko atalaseak F1-score zertxobait handiagoa lortzen du, baina recall
-txikiagoa ere badu: 0,796. Proiektu honetan falsu negatibo batek fabrikaren
-geldialdia eragin dezakeenez, recall-a precision edo F1-score hutsa baino
-garrantzitsuagoa da. Horregatik aukeratu da **0,40**: 0,35ekin alderatuta
-precision-a 0,721etik 0,815era igotzen du, FP kopurua 17tik 10era jaisten
-du, eta recall-a 0,815ean mantentzen du. Horrela, 0,40 da sistemaren azken
-atalasea, ez metrika guztietan onena delako, baizik eta negozio-arriskuarekin
-bat datorren oreka eskaintzen duelako.
+Emaitzek erakusten dute atalasea jaisteak hutsegite gehiago detektatzeko aukera ematen duela, baina alarma faltsuen kopurua ere handitzen dela. Alderantziz, atalasea igotzean alarma faltsu gutxiago sortzen dira, baina benetako hutsegite gehiago detektatu gabe gera daitezke.
+
+**Kostu ekonomikoaren azterketa:**
+
+Kostuen arabera, 0,30eko atalaseak emaitzarik onena lortzen du, **63.700 €-ko kostu ekonomiko estimatuarekin**. 0,40ko atalaseak, berriz, 65.200 €-ko kostua du, eta 0,50ekoak 69.100 €-koa.
+
+0,30eko eta 0,40ko atalaseak alderatuz, lehenengoak positibo faltsu gehiago sortzen ditu (26, 10en ordez), baina negatibo faltsu bat gutxiago (9, 10en ordez). Horren ondorioz, 0,30eko atalaseak kostu ekonomiko txikiagoa eragiten du, nahiz eta alarma faltsu gehiago sortu.
+
+Bestalde, 0,50eko atalaseak F1-score altuena lortzen du, baina negatibo faltsu gehiago sortzen ditu (11), eta horrek kostu ekonomikoa handitzen du. Horrek erakusten du F1-score altuena lortzea ez dela beti aukerarik egokiena industria-ingurune batean, errore mota bakoitzak ondorio ekonomiko desberdinak dituelako.
+
+**Ondorioa:**
+
+Kostu ekonomiko txikiena 0,30eko atalasearekin lortzen bada ere, proiektu honetan **0,40ko atalasea hautatu da azken atalase operatibo gisa**.
+
+Erabaki hori hartzeko, ez da kostu ekonomikoa bakarrik kontuan hartu, baizik eta hutsegiteak detektatzeko gaitasuna eta alarma faltsuek eragindako ondorio operatiboak ere aztertu dira.
+
+0,30eko atalaseak 63.700 €-ko kostu estimatua du, eta 0,40koak, berriz, 65.200 €-koa. Beraz, bien arteko aldea 1.500 €-koa da balidazio-multzoan. Hala ere, 0,40ko atalaseak positibo faltsuen kopurua 26tik 10era murrizten du, hau da, balidazio-multzoan beharrezkoak ez diren 16 ikuskapen saihesten ditu. Gainera, precision-a 0,634tik 0,815era igotzen du, eta F1-score-a ere hobetzen du, 0,720tik 0,815era.
+
+Bestalde, recall-a 0,833tik 0,815era jaisten da; beraz, 0,30eko atalaseak hutsegite gehiago detektatzen ditu. Hala ere, 0,40ko atalaseak benetako hutsegiteen %81,5 detektatzen ditu, eta emaitza hori egokitzat jo da proiektuaren helburuetarako.
+
+Horrenbestez, **0,40ko atalasea aukeratu da detekzio-gaitasunaren, alarma faltsuen kopuruaren eta mantentze-lanen eraginkortasunaren arteko oreka bilatzeko**. Aukeratutako atalaseak ez du kostu ekonomiko estimatu txikiena lortzen, baina positibo faltsuak nabarmen murrizten ditu eta iragarpen fidagarriagoak eskaintzen ditu.
 
 ## 6. Ezaugarrien garrantzia
 
@@ -428,18 +447,3 @@ APIaren egiaztapena entregagai gisa markatu aurretik, komandoa benetan
 exekutatu eta erantzuna egiaztatu behar da.
 
 ------------------------------------------------------------------------
-
-# 2. faseko entregagaien egiaztapen-zerrenda
-
--   [ ] `notebooks/02_training.ipynb` osatua eta dokumentatua.
--   [ ] Preprocessing urratsak eta haien arrazoiak azalduak.
--   [ ] Klase-desoreka tratatzeko `class_weight="balanced"` aukera
-    justifikatua.
--   [ ] Nahasmen-matrizea sortua eta TN, FP, FN eta TP kontzeptuak
-    azalduta.
--   [ ] Sailkapen-txostena eta metrikak interpretatuta.
--   [ ] Atalasearen doikuntza eta 0,4ko atalasearen emaitzak azalduak.
--   [ ] Ezaugarrien garrantzia aztertua.
--   [ ] `models/cnc_failure_model.pkl` fitxategia gordeta.
--   [ ] `/health` endpoint-a egiaztatuta eta `"model_loaded": true`
-    erantzuna baieztatuta.

@@ -201,9 +201,3 @@ curl "http://localhost:9200/cnc-sensors/_search?size=1"
 - [ X ] `cnc-sensors` indexak dokumentuak ditu.
 - [ X ] Kibana dashboardean datuak agertzen dira.
 - [ X ] Kibana eta NiFi-ren kapturak `docs/images/` karpetan gorde dira.
-
----
-
-## 2. fasea — Preprocessing-a eta eredua entrenatzea
-
-## 3. fasea — Streaming inferentzia eta alertak
