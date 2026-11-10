@@ -76,12 +76,14 @@ flowchart LR
 
 ### 1.3. Azpiegitura edukiontziratua (Docker eta Docker Compose)
 #### Docker Compose-ren helburua
+
+> **Helburua:** Proiektuko zerbitzu guztiak modu isolatuan, errepikagarrian eta konfigurazio kontrolatuarekin exekutatzea.
 CNC Guard proiektuan Docker eta Docker Compose erabili dira sistemaren azpiegitura osoa edukiontzien bidez hedatzeko eta kudeatzeko. Horri esker, proiektuko zerbitzu guztiak ingurune isolatu eta independenteetan exekuta daitezke, bakoitzaren mendekotasunak eta konfigurazioak kontrolatuz.
 
 docker-compose.yml fitxategiak sistemaren zerbitzu guztiak definitzen ditu, baita haien arteko komunikazioa, sare-konfigurazioa, portuak, ingurune-aldagaiak, bolumen iraunkorrak eta abiarazte-mendekotasunak ere.
 
 Konfiguratutako azpiegiturak honako zerbitzu hauek biltzen ditu:
-| Zerbitzua | Batezbestekoa 
+| Zerbitzua | Erantzukizuna |
 |---|---|
 | Apache Kafka | Sentsoreen datuak bufferizatu eta streaming bidez banatzea. |
 | Filebeat | Fitxategi partekatuko datuak irakurri eta Kafkara bidaltzea. |
@@ -101,6 +103,7 @@ Filebeat-ek fitxategi partekatuan sortzen diren sentsoreen datuak irakurtzen dit
 - `cnc-stream-cifs`: CIFS bidez muntatutako fitxategi partekatua irakurtzeko erabiltzen da.
 
 #### Apache NiFi — Datuen eraldaketa eta bideratzea
+
 NiFi datuen streaming pipeline-aren koordinazioaz arduratzen da. Kafkatik jasotako mezuak prozesatu, beharrezko eraldaketak egin, Scoring APIarekin komunikatu eta emaitzak Elasticsearch-era bidaltzen ditu.
 
 - `8443:8443`: NiFi-ren HTTPS web-interfazea eskuragarri jartzen du.
@@ -109,6 +112,7 @@ NiFi datuen streaming pipeline-aren koordinazioaz arduratzen da. Kafkatik jasota
 - `depends_on`: Kafka eta Elasticsearch zerbitzuak NiFi baino lehen abiaraztea ezartzen du.
 
 #### Elasticsearch — Datuen biltegiratzea
+
 Elasticsearch sistemaren biltegiratze eta bilaketa-motorra da. Sentsoreen erregistroak eta Machine Learning ereduak sortutako aurreikuspenak indexatzeko erabiltzen da.
 
 - `discovery.type=single-node`: nodo bakarreko konfigurazioa erabiltzen du.
@@ -118,6 +122,7 @@ Elasticsearch sistemaren biltegiratze eta bilaketa-motorra da. Sentsoreen erregi
 - `es-data`: datuen iraunkortasuna bermatzen du, edukiontzia berrabiarazi edo ordezkatu arren.
 
 #### Kibana — Datuen bistaratzea
+
 Kibanak Elasticsearch-en gordetako informazioa grafikoki aztertzeko aukera ematen du. Monitorizazio-panelak, KPIak, denbora-serieak, heatmap-ak eta gertaeren taulak sortzeko erabiltzen da.
 
 - `ELASTICSEARCH_HOSTS`: Elasticsearch zerbitzuaren helbidea definitzen du.
@@ -127,6 +132,7 @@ Kibanak Elasticsearch-en gordetako informazioa grafikoki aztertzeko aukera emate
 - `5601:5601`: Kibana-ren web-interfazea eskuragarri jartzen du.
 
 #### Scoring API — Machine Learning inferentzia
+
 Scoring APIa FastAPI erabiliz garatutako mikrozerbitzua da. Aurretik entrenatutako Machine Learning eredua kargatzen du eta NiFIk bidalitako sentsoreen datuekin hutsegiteen probabilitatea kalkulatzen du.
 
 - `build.context`: APIaren Docker irudia eraikitzeko erabiliko den direktorioa definitzen du.
@@ -148,26 +154,31 @@ Proiektuan hiru bolumen nagusi definitu dira:
 Azken bolumen horrek `192.168.75.150` zerbitzarian kokatutako `cnc-stream` direktorio partekatua erabiltzen du. `ro` aukerak irakurtzeko soilik muntatzen dela adierazten du.
 
 #### Edukiontzien abiaraztea eta kudeaketa
+
 **Zerbitzu guztiak batera abiarazteko:**
 ```bash
 docker compose up -d --build
 ```
 
 **Edukiontzien egoera ikusteko:**
+
 ```bash
 docker compose ps
 ```
 
 **Zerbitzu jakin baten log-ak ikusteko:**
+
 ```bash
 docker compose logs -f kafka
 ```
 
 **Zerbitzu guztiak gelditzeko:**
+
 ```bash
 docker compose down
 ```
 ### 1.3.1. Ingurune-aldagaien konfigurazioa (`.env`)
+
 
 Docker Compose-ren konfigurazioan kredentzialak eta informazio sentikorra zuzenean idatzi beharrean, ingurune-aldagaiak erabiltzen dira. Horretarako, `.env` fitxategia erabiltzen da.
 
@@ -207,7 +218,8 @@ CIFS_USERNAME=CHANGE_ME_CIFS_USER
 CIFS_PASSWORD=CHANGE_ME_CIFS_PASSWORD
 ```
 #### `.gitignore` fitxategia
-Benetako .env fitxategia Git-etik kanpo utzi behar da, kredentzialak publikoki ez zabaltzeko.
+
+Benetako `.env` fitxategia Git-etik kanpo utzi behar da, kredentzialak publikoki ez zabaltzeko.
 
 Horretarako, .gitignore fitxategian honako lerro hauek gehituko dira:
 ```gitignore
@@ -218,7 +230,8 @@ Horretarako, .gitignore fitxategian honako lerro hauek gehituko dira:
 ```
 
 #### Taldekideen konfigurazioa
-Taldekide bakoitzak bere .env fitxategia sortuko du .env.example fitxategitik abiatuta:
+
+Taldekide bakoitzak bere `.env` fitxategia sortuko du `.env.example` fitxategitik abiatuta:
 ```bash
 cp .env.example .env
 ```
@@ -360,12 +373,12 @@ Fase honetako prozesadore nagusiak lau multzotan banatzen dira:
 - **`EvaluateJsonPath`:** Datuen fluxutik beharrezko eremuak ateratzen ditu (`machine_id`, `machine_type`, `timestamp`) eta NiFi atributu gisa gordetzen ditu memorian.
 - **`JoltTransformJSON`:** JSON mezuaren egitura eraldatzen du (Jolt espezifikazioen bidez), Scoring API-ak (FastAPI) eskatzen duen sarrera-formatu zehatzera egokituz.
 
-**B) Machine Learning Ereduari deia**
+**B) Machine Learning ereduari deia**
 
 - **`InvokeHTTP` (Scoring API):** API-ari `POST` eskaera bat egiten dio datuekin (`http://scoring-api:8000/predict`). Segurtasunerako `X-API-Key` bat bidaltzen du goiburukoan, baimenik gabeko sarbideak ekiditeko.
 - **`EvaluateJsonPath`:** API-ak itzultzen duen JSON erantzunetik iragarpenaren emaitzak erauzten ditu: `failure_predicted`, `failure_probability` eta `alert_level`.
 
-**C) Bideratzea eta Biltegiratzea (Emaitzen arabera)**
+**C) Bideratzea eta biltegiratzea (emaitzen arabera)**
 
 Iragarpenaren emaitza aztertu ondoren, **`RouteOnAttribute`** prozesadore baten bidez fluxua hainbat adarretan banatzen da (APIak itzulitako alerta-mailaren arabera: OK, KONTUZ, LARRIA):
 
@@ -373,7 +386,7 @@ Iragarpenaren emaitza aztertu ondoren, **`RouteOnAttribute`** prozesadore baten 
 - **`PutElasticsearchJson FALLOS`:** Makinan anomalia bat aurreikusten bada (KONTUZ edo LARRIA), informazioa `cnc-error2` indize bereizian gordetzen da.
 - **`UpdateRecord` & `PutElasticsearchJson (Silver)`:** Paraleloki, tenperaturak Kelvinetik Celsius gradutara eraldatzen dira `UpdateRecord` erabiliz, eta datu garbiago horiek `cnc-silver` indizean gordetzen dira, gerora analisi historikoa egiteko.
 
-**D) Alerta Sistema (Telegram)**
+**D) Alerta-sistema (Telegram)**
 
 API-ak makina baten hutsegite arriskua detektatzen badu, denbora errealeko abisuak bidaltzen dira mantentze-taldeko Telegram kanalera:
 
@@ -391,32 +404,547 @@ Fluxu hauek behar bezala exekutatu daitezen, NiFi-n ezinbestekoak diren zenbait 
 ## 3. DATUEN AZTERKETA ESPLORATZAILEA (EDA) ETA AURREPROZESATZEA
 
 ### 3.1. Entrenamendu-datasetaren azterketa (`ai4i2020_train.csv`)
+Lehenik, AI4I 2020 datu-multzoaren entrenamendurako zatia kargatu da, `pandas` liburutegia erabiliz. Hasierako azterketaren helburua datuen egitura ezagutzea izan da: erregistro eta zutabe kopurua, datu motak, estatistika deskribatzaileak, balio faltak eta helburu-aldagaiaren banaketa.
+
+Horretarako, `info()`, `describe()` eta `isnull().sum()` metodoak erabili dira, baita `machine_failure` aldagaiaren maiztasunak eta proportzioak aztertzeko `value_counts()` ere.
+
+```python
+import pandas as pd
+
+df = pd.read_csv("../data/ai4i2020_train.csv")
+
+# Datu-multzoaren egitura eta datu motak
+df.info()
+
+# Estatistika deskribatzaileak
+display(df.describe())
+
+# Balio faltak aztertu
+display(df.isnull().sum())
+
+# Helburu-aldagaiaren banaketa
+print(df["machine_failure"].value_counts())
+print(df["machine_failure"].value_counts(normalize=True) * 100)
+```
+Azterketaren arabera, entrenamendu-datasetak 8.000 erregistro eta 13 zutabe ditu. Ez da balio faltarik aurkitu, beraz, ez da beharrezkoa izan hasierako fase honetan falta diren datuak ezabatu edo ordezkatzea.
+
+Helburu-aldagaiaren (machine_failure) banaketak, ordea, desoreka nabarmena erakusten du:
+- Hutsegiterik gabeko erregistroak: %96,6 inguru.
+- Hutsegitea duten erregistroak: %3,4 inguru.
+Banaketa horrek esan nahi du hutsegiteak gutxiengo-klasea direla. Egoera horretan, eredu batek erregistro gehienak zuzen sailka ditzake hutsegiteak ia inoiz detektatu gabe ere. Horregatik, accuracy metrika bakarrik erabiltzea ez da egokia ereduaren benetako kalitatea ebaluatzeko.
+
+Proiektuaren helburu nagusia makinen hutsegiteak garaiz detektatzea denez, arreta berezia jarri zaie recall, precision eta F1-score metrikek ematen duten informazioari. Bereziki garrantzitsua da benetako hutsegiteak identifikatzea, detektatu gabeko hutsegite batek makina gelditzea eta ekoizpen-galerak eragin baititzake.
 
 ### 3.2. Azterketa esploratzailea (EDA) eta datu-banaketak
+Datasetaren egitura orokorra aztertu ondoren, azterketa esploratzaile grafikoa (EDA) egin da sentsoreen portaera eta aldagaien arteko erlazioak hobeto ulertzeko.
+
+Horretarako, hainbat irudikapen grafiko erabili dira:
+- Banaketa-histogramak: Tenperatura, biraketa-abiadura, momentua eta erremintaren higadura bezalako sentsore-aldagaien banaketa aztertzeko. Hutsegiteak eta hutsegiterik gabeko erregistroak bereizita aztertzeak klaseen arteko desberdintasun posibleak identifikatzen laguntzen du.
+- Hutsegite-moten azterketa: Hutsegite mota bakoitzaren maiztasuna aztertzeko (failure_TWF, failure_HDF, failure_PWF, failure_OSF eta failure_RNF).
+- Korrelazio-matrizea: Aldagai numerikoen arteko erlazio linealak eta helburu-aldagaiarekiko loturak aztertzeko.
+- Pairplot grafikoak: Sentsoreen arteko erlazioak modu bateratuan ikusteko eta hutsegiteak dituzten erregistroek banaketa desberdina duten aztertzeko.
+- Boxplot grafikoak: Aldagai numerikoen sakabanaketa eta balio muturreko posibleak (outliers) identifikatzeko.
+- Makinen erregistro-kopurua: Makina bakoitzak datasetaren barruan duen erregistro-kopurua aztertzeko.
+Analisi grafiko horiek lagungarriak izan dira datuen portaera ulertzeko eta sentsoreen arteko erlazio posibleak identifikatzeko. Bereziki, tenperaturaren, momentuaren eta erremintaren higaduraren arteko konbinazioek hutsegiteen detekzioan izan dezaketen garrantzia aztertu da.
+
+Boxploten bidez balio muturrekoak ere aztertu dira. Hala ere, industria-ingurune batean balio muturreko guztiak ez dira automatikoki erroreak: sentsore batek ohikoa ez den neurketa bat jasotzea makinaren egoera anormal baten seinale izan daiteke. Horregatik, ez dira balio horiek automatikoki ezabatu; haien izaera eta esanahi fisikoa kontuan hartu dira.
+
+EDAren emaitzek aurreprozesatze-estrategia definitzeko eta ereduari eman beharreko ezaugarriak aukeratzeko oinarria eskaini dute.
 
 ### 3.3. Datuen garbiketa eta datu-ihesaren (data leakage) prebentzioa
+Ereduak benetako ekoizpen-ingurune batean izango lukeen informazio bera erabil dezan, aurreprozesatzean datu-ihesa (data leakage) saihestea ezinbestekoa izan da.
 
+AI4I 2020 datasetak hutsegite mota bakoitzari buruzko informazioa jasotzen duten hainbat zutabe ditu. Zutabe horiek hutsegitea gertatu ondoren edo diagnostikatu ondoren ezagutzen den informazioa adierazten dute. Beraz, ereduaren sarrera gisa erabiliz gero, ereduak etorkizuneko edo helburuaren ondoriozko informazioa izango luke eskura, eta horrek ebaluazioaren emaitzak artifizialki hobetuko lituzke.
+
+Horregatik, honako zutabe hauek ezabatu dira:
+- failure_TWF
+- failure_HDF
+- failure_PWF
+- failure_OSF
+- failure_RNF
+machine_id zutabea ere kendu da. Identifikatzaile hutsa denez, ez du makinaren egoera fisikoari buruzko informaziorik ematen. Gainera, ereduak makina jakin baten identifikatzailea ikastea saihestu nahi da, sentsoreen benetako portaeran oinarritutako iragarpenak egin ditzan.
+
+machine_failure aldagaia, aldiz, mantendu egin da, ereduaren helburu-aldagaia baita. Ezaugarri prediktiboen artean ez sartzea bermatu da.
+
+```python
+drop_cols = [
+    "machine_id",
+    "failure_TWF",
+    "failure_HDF",
+    "failure_PWF",
+    "failure_OSF",
+    "failure_RNF",
+]
+
+df_clean = df.drop(columns=drop_cols)
+```
+
+Garbiketa honen bidez, ereduak hutsegitea aurreikusteko benetako erabileran eskuragarri egongo liratekeen sentsore-neurketak eta makina motaren informazioa erabiltzen ditu, hutsegitearen ondoriozko informaziorik gabe.
 ### 3.4. Kategoria-aldagaien kodetzea (One-Hot Encoding)
+Datasetak machine_type izeneko kategoria-aldagaia dauka, hiru makina mota adierazten dituena: H, L eta M.
+
+Machine Learning algoritmoek ezin dituzte kategoria horiek testu gisa zuzenean prozesatu. Horregatik, One-Hot Encoding teknika erabili da, kategoria bakoitza zenbakizko adierazle bitar batean bihurtzeko.
+
+```python
+df_encoded = pd.get_dummies(
+    df_clean,
+    columns=["machine_type"],
+    drop_first=True,
+    dtype=int,
+)
+```
+drop_first=True parametroaren bidez, lehenengo kategoria erreferentzia gisa mantentzen da, eta ez da haren zutabe espezifikorik sortzen. Kasu honetan, H kategoria erreferentzia da, eta honako bi zutabeak sortzen dira:
+- machine_type_L: 1 izango da makina mota L denean; bestela, 0.
+- machine_type_M: 1 izango da makina mota M denean; bestela, 0.
+H motako makinen kasuan, bi adierazleek 0 balioa izango dute.
+
+Teknika honen bidez, kategorien informazioa zenbakizko formatuan adierazten da, haien artean existitzen ez den ordena erlazionalik ezarri gabe. Horrela, ereduak makina motaren eragina ikas dezake kategoria bakoitzari balio ordinal faltsurik eman gabe.
 
 ### 3.5. Ezaugarri eratorrien sorrera (Feature Engineering)
+Sentsoreen jatorrizko neurketek informazio baliagarria eskaintzen dute, baina aldagai horien arteko erlazioek ere informazio prediktibo gehigarria eman dezakete. Horregatik, Feature Engineering teknika erabili da, jatorrizko ezaugarrietatik abiatuta hiru aldagai eratorri sortzeko.
 
+Ezaugarri berriak domeinu-ezagutzan eta makinen funtzionamendu fisikoan oinarrituta aukeratu dira.
+
+```python
+# Potentziaren estimazioa
+df_encoded["power"] = (
+    df_encoded["rpm"] * df_encoded["torque_Nm"]
+)
+
+# Prozesuko eta giroko tenperaturen arteko diferentzia
+df_encoded["temp_diff"] = (
+    df_encoded["process_temp_K"] - df_encoded["air_temp_K"]
+)
+
+# Momentuaren eta erremintaren higaduraren arteko biderketa
+df_encoded["torque_wear"] = (
+    df_encoded["torque_Nm"] * df_encoded["tool_wear_min"]
+)
+```
+Sortutako hiru ezaugarriak honako hauek dira:
+| Parametroa | Balioa | Azalpena |
+|---|---|---|
+| `power` | `rpm * torque_Nm` | Biraketa-abiaduraren eta momentuaren arteko erlazioa adieraztea, makinaren lan-intentsitateari buruzko informazioa emanez. |
+| `temp_diff` | `process_temp_K - air_temp_K` | Prozesuko eta giroko tenperaturen arteko diferentzia neurtzea, beroketa-maila aztertzeko. |
+| `torque_wear` | `torque_Nm * tool_wear_min` | Momentuaren eta erremintaren higaduraren arteko elkarrekintza adieraztea, higadurak lan-kargarekin duen erlazioa aztertzeko. |
+
+power ezaugarriak makinaren biraketa-abiadura eta momentua batera kontuan hartzen ditu. temp_diff aldagaiak, berriz, prozesuko tenperaturaren igoera giro-tenperaturarekiko neurtzen du. Azkenik, torque_wear ezaugarriak erremintaren higadura eta momentu mekanikoa konbinatzen ditu, bi faktore horiek batera agertzen direnean sor daitekeen arriskua ereduak ikas dezan.
+
+Ezaugarri eratorri horiek ez dute hutsegitea zuzenean adierazten; sentsoreen neurketetatik kalkulatutako aldagaiak dira. Haien helburua ereduari makinaren egoera fisikoa hobeto deskribatzen duten erlazioak eskaintzea da.
+
+Aurreprozesatze-fase honen amaieran, datu-multzoak jatorrizko sentsore-ezaugarriak, machine_type aldagaiaren kodifikazioa eta sortutako hiru ezaugarri eratorriak ditu. Horiek erabiliko dira ondorengo entrenamendu- eta ebaluazio-faseetan.
 ## 4. MACHINE LEARNING EREDUAREN ENTRENAMENDUA ETA EBALUAZIOA
 
 ### 4.1. Entrenamendu- eta balidazio-multzoen banaketa estrategikoa
+Aurreprozesatzea amaitu ondoren, ereduak erabiliko dituen ezaugarriak (`X`) eta aurreikusi beharreko helburu-aldagaia (`y`) banandu dira.
+
+Ereduak guztira hamar ezaugarri erabiltzen ditu:
+
+- Bost jatorrizko sentsore-ezaugarri: `air_temp_K`, `process_temp_K`, `rpm`, `torque_Nm` eta `tool_wear_min`.
+- Hiru ezaugarri eratorri: `power`, `temp_diff` eta `torque_wear`.
+- Bi makina motaren adierazle: `machine_type_L` eta `machine_type_M`.
+
+Ezaugarrien ordena esplizituki definitu da, entrenamenduan eta ondorengo predikzioetan beti sarrera-egitura bera erabiltzeko.
+
+```python
+FEATURES = [
+    "air_temp_K",
+    "process_temp_K",
+    "rpm",
+    "torque_Nm",
+    "tool_wear_min",
+    "power",
+    "temp_diff",
+    "torque_wear",
+    "machine_type_L",
+    "machine_type_M",
+]
+
+X = df_encoded[FEATURES]
+y = df_encoded["machine_failure"]
+```
+Ondoren, datu-multzoa entrenamendu- eta balidazio-multzoetan banatu da, train_test_split() funtzioaren bidez.
+```python
+from sklearn.model_selection import train_test_split
+
+X_train, X_val, y_train, y_val = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y,
+)
+```
+Banaketa honela egin da:
+- %80 entrenamendurako: ereduak sentsoreen datuetatik hutsegiteen portaera ikasteko erabiltzen den zatia.
+- %20 balidaziorako: entrenatutako ereduaren portaera aurrez ikusi gabeko datuekin ebaluatzeko erabiltzen den zatia.
+random_state=42 parametroa erabili da banaketa errepikagarria izan dadin. Horrela, kodea berriro exekutatzean entrenamendu- eta balidazio-multzo berdinak lortzen dira.
+
+Bestalde, stratify=y parametroa bereziki garrantzitsua da proiektu honetan, hasierako datu-multzoa oso desorekatuta dagoelako. Estratifikazioaren bidez, hutsegiteen eta hutsegiterik gabeko erregistroen proportzioa mantentzen da bi multzoetan. Horrela, balidazio-multzoak benetako datuen banaketa ordezkatzen jarraitzen du, gutxiengo-klaseko erregistro gehiegi galdu edo pilatu gabe.
+
+Banaketa honi esker, ereduaren entrenamendua eta haren ebaluazioa bereizita egiten dira, eta balidazio-datuak ez dira ereduak ikasteko erabiltzen.
 
 ### 4.2. Klase-desoreka tratatzeko estrategiak (Class Weight eta SMOTE)
+Hasierako EDA azterketan ikusi den bezala, machine_failure helburu-aldagaia oso desorekatuta dago: hutsegiteak erregistro guztien %3,4 inguru baino ez dira.
+
+Desoreka hori tratatu gabe utziz gero, ereduak klase nagusiari gehiegizko garrantzia emateko joera izan dezake. Horren ondorioz, hutsegiterik gabeko kasuak zuzen sailkatuko lituzke gehienetan, baina benetako hutsegite asko detektatu gabe utz ditzake.
+
+Arazo hori murrizteko, bi estrategia nagusi aztertu dira: class_weight eta SMOTE.
+
+#### A) Class Weight
+
+Lehenengo estrategian, RandomForestClassifier algoritmoaren class_weight="balanced" parametroa erabili da.
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier(
+    n_estimators=2000,
+    max_depth=15,
+    min_samples_split=4,
+    class_weight="balanced",
+    random_state=42,
+)
+```
+Parametro horrek klase bakoitzari pisu desberdina esleitzen dio, klase bakoitzaren maiztasunaren arabera. Gutxiengo-klasea denez, hutsegiteen erregistroek pisu handiagoa jasotzen dute entrenamenduan.
+
+Estrategia honen abantaila nagusia da jatorrizko datuen banaketa mantentzen duela, lagin artifizialik sortu gabe. Gainera, algoritmoaren barruan aplikatzen denez, ez du datu-multzoaren tamaina handitzen.
+
+Bigarren estrategian, SMOTE teknika aztertu da. Teknika honek gutxiengo-klaseko lagin sintetikoak sortzen ditu, klaseen arteko desoreka murrizteko.
+
+Horretarako, imblearn liburutegiko SMOTE eta Pipeline erabili dira.
+```python
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_validate
+
+smote_model = ImbPipeline([
+    ("smote", SMOTE(random_state=42)),
+    ("classifier", RandomForestClassifier(
+        n_estimators=2000,
+        max_depth=15,
+        min_samples_split=4,
+        class_weight=None,
+        random_state=42,
+    )),
+])
+
+smote_results = cross_validate(
+    smote_model,
+    X_train,
+    y_train,
+    cv=skf,
+    scoring=scoring,
+    n_jobs=-1,
+)
+```
+SMOTE pipeline baten barruan integratzea erabaki garrantzitsua da. Horrela, balidazio gurutzatuan lagin sintetikoak entrenamendurako erabiltzen diren zatietan bakarrik sortzen dira. Balidazio-zatiak jatorrizko datuekin mantentzen dira, datu-ihesa saihesteko eta ebaluazio fidagarriagoa lortzeko.
+
+Bi estrategiak alderatuz, class_weight aukerak jatorrizko datuen egitura mantentzen du; SMOTE estrategiak, berriz, gutxiengo-klasearen ordezkaritza handitzen du lagin sintetikoen bidez. Horregatik, bi ikuspegiak aztertu dira, hutsegiteen detekzioan zein den eraginkorragoa zehazteko.
 
 ### 4.3. Algoritmoen entrenamendua: Random Forest vs XGBoost
+Hutsegiteak aurreikusteko bi algoritmo nagusi aztertu dira: Random Forest eta XGBoost. Horrez gain, Random Forest eta SMOTE konbinatzen dituen hirugarren estrategia ere ebaluatu da.
+
+#### A) Random Forest
+
+Lehenengo eredua RandomForestClassifier algoritmoaren bidez entrenatu da.
+
+Random Forest ensemble learning motako algoritmoa da, hainbat erabakien zuhaitz konbinatzen dituena. Zuhaitz bakoitzak entrenamendu-datuen lagin eta ezaugarri desberdinak erabiltzen ditu, eta azken iragarpena zuhaitzen emaitzak konbinatuz lortzen da.
+
+Proiektu honetan, klase-desoreka kontuan hartzeko class_weight="balanced" erabili da. Gainera, zuhaitzen kopurua, gehieneko sakonera eta nodoak zatitzeko behar den gutxieneko lagin-kopurua konfiguratu dira.
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier(
+    n_estimators=2000,
+    max_depth=15,
+    min_samples_split=4,
+    class_weight="balanced",
+    random_state=42,
+)
+
+model.fit(X_train, y_train)
+```
+Erabilitako parametroen helburua honako hau da:
+| Parametroa | Balioa | Azalpena |
+|---|---:|---|
+| `n_estimators` | 2000 | Ausazko basoa osatzen duten erabakien zuhaitzen kopurua. |
+| `max_depth` | 15 | Zuhaitzen gehieneko sakonera mugatzen du. |
+| `min_samples_split` | 4 | Nodo bat zatitzeko behar den gutxieneko lagin-kopurua. |
+| `class_weight` | `balanced` | Klaseen desoreka kontuan hartzen du. |
+| `random_state` | 42 | Entrenamenduaren emaitza errepikagarriagoa izatea ahalbidetzen du. |
+
+Zuhaitz kopuru handia erabiltzeak hainbat erabaki konbinatzeko aukera ematen du. max_depth eta min_samples_split parametroek, berriz, zuhaitzen konplexutasuna mugatzen laguntzen dute, entrenamendu-datuetara gehiegi ez egokitzeko.
+
+#### B) XGBoost
+
+Bigarren algoritmo gisa, XGBoost erabili da. Random Forest-ek ez bezala, XGBoost-ek boosting teknika erabiltzen du: zuhaitzak sekuentzialki entrenatzen dira, aurreko zuhaitzek egindako erroreak zuzentzen joateko.
+
+Klase-desoreka tratatzeko, scale_pos_weight parametroa erabili da. Parametro horren balioa klase negatiboen eta positiboen arteko proportzioaren arabera kalkulatu da.
+```python
+import xgboost as xgb
+
+scale_weight = (
+    (y_train == 0).sum() / (y_train == 1).sum()
+)
+
+xgb_model = xgb.XGBClassifier(
+    n_estimators=100,
+    learning_rate=0.1,
+    max_depth=5,
+    scale_pos_weight=scale_weight,
+    random_state=42,
+    eval_metric="logloss",
+)
+
+xgb_model.fit(X_train, y_train)
+
+y_pred_xgb = xgb_model.predict(X_val)
+y_proba_xgb = xgb_model.predict_proba(X_val)[:, 1]
+```
+
+scale_pos_weight parametroaren bidez, gutxiengo-klaseko hutsegiteei garrantzi handiagoa ematen zaie. learning_rate parametroak zuhaitz bakoitzaren ekarpena kontrolatzen du, eta max_depth parametroak zuhaitzen konplexutasuna mugatzen du.
+
+#### C) Random Forest + SMOTE
+
+Hirugarren estrategia Random Forest eta SMOTE tekniken konbinazioa da. Kasu honetan, SMOTE algoritmoak hutsegiteen lagin sintetikoak sortzen ditu, eta ondoren Random Forest sailkatzaileak datu orekatuago horiekin ikasten du.
+
+Estrategia hau 4.2 atalean definitutako smote_model pipeline-aren bidez entrenatu eta ebaluatu da.
+
+Hiru estrategiak aztertzeak aukera ematen du algoritmo desberdinen eta klase-desoreka tratatzeko tekniken eragina alderatzeko, eta ez soilik algoritmo bakar baten emaitzetan oinarritzeko.
 
 ### 4.4. Balidazio gurutzatua (Stratified K-Fold Cross-Validation)
+Ereduaren portaera ez dadin entrenamendu- eta balidazio-banaketa bakar baten araberakoa izan, balidazio gurutzatua erabili da.
 
+Horretarako, StratifiedKFold teknika aplikatu da, bost zatiko banaketarekin (n_splits=5). Entrenamendu-multzoa bost azpimultzotan banatzen da, eta bost iterazio egiten dira. Iterazio bakoitzean, lau zati entrenatzeko eta gainerako bat balidatzeko erabiltzen dira.
+```python
+from sklearn.model_selection import StratifiedKFold, cross_validate
+
+skf = StratifiedKFold(
+    n_splits=5,
+    shuffle=True,
+    random_state=42,
+)
+
+scoring = {
+    "recall": "recall",
+    "roc_auc": "roc_auc",
+    "precision": "precision",
+    "f1": "f1",
+}
+
+cv_results = cross_validate(
+    model,
+    X_train,
+    y_train,
+    cv=skf,
+    scoring=scoring,
+    n_jobs=-1,
+)
+```
+Lortutako emaitzak batezbestekoaren eta desbideratze estandarraren bidez aztertu dira:
+| Metrika | Batezbestekoa | Desbideratze estandarra |
+|---|---:|---:|
+| Recall | 0,8429 | 0,0614 |
+| ROC-AUC | 0,9797 | 0,0156 |
+| Precision | 0,8503 | 0,0547 |
+| F1-score | 0,8432 | 0,0215 |
+
+Batezbestekoak ereduak bost iterazioetan lortutako errendimendu orokorra adierazten du. Desbideratze estandarrak, berriz, emaitzak iterazio batetik bestera zenbat aldatzen diren erakusten du.
+
+Emaitzek Random Forest ereduaren portaera egonkorra eta hutsegiteak identifikatzeko gaitasun ona erakusten dute. Bereziki, ROC-AUC balio altuak ereduak hutsegiteak eta hutsegiterik gabeko kasuak bereizteko gaitasun ona duela adierazten du.
+
+Balidazio gurutzatua entrenamendu-multzoan egin da; azken ebaluaziorako, aldiz, aurrez bereizitako balidazio-multzoa erabili da.
 ### 4.5. Ereduen arteko konparazioa eta metrikak (Precision, Recall, F1, ROC-AUC)
+Hiru estrategien errendimendua baldintza berdinetan alderatzeko, Random Forest, XGBoost eta Random Forest + SMOTE ereduak ebaluatu dira balidazio-multzo berarekin.
 
+SMOTE bidez sortutako eredua balidazio-multzoarekin alderatu aurretik, entrenamendu-multzo osoarekin entrenatu behar da. Izan ere, `cross_validate()` funtzioak pipeline-aren kopiak erabiltzen ditu iterazio bakoitzean, baina ez du jatorrizko `smote_model` objektua entrenatuta uzten.
+```python
+smote_model.fit(X_train, y_train)
+```
+Konparazioa egiteko, eredu bakoitzaren `predict_proba()` metodoaren bidez hutsegite-probabilitateak kalkulatu dira. Ondoren, hiru ereduei 0,40ko atalase bera aplikatu zaie, iragarpenak baldintza berdinetan alderatzeko.
+
+```python
+from sklearn.metrics import (
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+)
+
+atalasea = 0.40
+
+ereduak = {
+    "Random Forest": model,
+    "XGBoost": xgb_model,
+    "Random Forest + SMOTE": smote_model,
+}
+
+for izena, eredua in ereduak.items():
+    probabilitateak = eredua.predict_proba(X_val)[:, 1]
+    iragarpenak = (probabilitateak >= atalasea).astype(int)
+
+    print(f"\n--- {izena} ---")
+    print(f"Precision: {precision_score(y_val, iragarpenak):.4f}")
+    print(f"Recall: {recall_score(y_val, iragarpenak):.4f}")
+    print(f"F1-score: {f1_score(y_val, iragarpenak):.4f}")
+    print(f"ROC-AUC: {roc_auc_score(y_val, probabilitateak):.4f}")
+```
+Lortutako emaitzak:
+| **Eredua** | **Precision** | **Recall** | **F1-score** | **ROC-AUC** |
+|---|---:|---:|---:|---:|
+| Random Forest | 0,8148 | 0,8148 | 0,8148 | 0,9792 |
+| ROC-XGBoost | 0,5946 |0,8148 | 0,6875 | 0,9682 |
+| Random Forest + SMOTE | 0,6027 | 0,8148 | 0,6929 | 0,9696 |
+
+Emaitzak interpretatzeko, metrika bakoitzak zer neurtzen duen kontuan hartu behar da:
+- Precision: Hutsegite gisa iragarritako kasuetatik zenbat diren benetako hutsegiteak neurtzen du. Balio altu batek alarma faltsuak murrizten laguntzen du.
+- Recall: Benetan hutsegitea duten erregistroetatik zenbat identifikatu diren neurtzen du. Industria-ingurune honetan bereziki garrantzitsua da, detektatu gabeko hutsegiteek ekoizpen-galerak eragin baititzakete.
+- F1-score: Precision eta Recall metrikak konbinatzen dituen batezbesteko harmonikoa da. Bi metrikak batera baloratzeko erabiltzen da.
+- ROC-AUC: Ereduak klase positiboak eta negatiboak bereizteko duen gaitasuna neurtzen du, probabilitate-atalase desberdinak kontuan hartuta.
+Hiru ereduek Recall balio bera lortu dute konparazio honetan. Hala ere, Random Forest ereduak Precision eta F1-score altuenak lortu ditu, eta ROC-AUC baliorik handiena ere bai.
+
+XGBoost eta Random Forest + SMOTE estrategiek hutsegiteen detekzio-maila bera lortu badute ere, alarma faltsu gehiago sortzeko joera erakutsi dute. Horrek esan nahi du benetako hutsegiteak identifikatzeko gaitasuna mantendu arren, hutsegiterik gabeko kasu gehiago oker sailkatzen dituztela.
+
+Horregatik, Random Forest aukeratu da proiektuko azken eredu prediktibo gisa. Konparazioan emaitza orekatuenak lortu ditu, hutsegiteen detekzio-gaitasuna mantenduz eta positibo faltsuen kopurua murriztuz.
 ### 4.6. Atalasearen doikuntza (Threshold Tuning) eta kostu ekonomikoaren azterketa
+Ereduak hutsegite-probabilitate bat itzultzen du predict_proba() metodoaren bidez. Probabilitate hori klase positibo edo negatibo bihurtzeko, atalase bat ezarri behar da.
+
+Atalase lehenetsia 0,50 izan ohi da, baina industria-ingurune batean ez da beti aukerarik egokiena. Izan ere, atalasea jaisteak hutsegite gehiago detektatzeko aukera ematen du, baina alarma faltsuen kopurua handitu dezake. Atalasea igotzeak, berriz, iragarpen positibo gehiago mugatzen ditu, baina benetako hutsegite batzuk detektatu gabe uzteko arriskua handitzen du.
+
+Horregatik, Random Forest ereduaren hutsegite-probabilitateak aztertu eta hainbat atalase alderatu dira. Hasierako ebaluazioan 0,35eko atalasea erabili da, eta ondoren atalasearen doikuntza egin da, 0,30, 0,40 eta 0,50 balioak alderatuz.
+```python
+y_prob = model.predict_proba(X_val)[:, 1]
+
+atalasea_baseline = 0.35
+
+y_pred = (
+    y_prob >= atalasea_baseline
+).astype(int)
+```
+
+Atalase bakoitzak sortzen dituen True Positive, True Negative, False Positive eta False Negative kasuak aztertu dira, nahasmen-matrizearen (confusion matrix) bidez.
+```python
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+cm = confusion_matrix(y_val, y_pred)
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["Hutsegiterik ez", "Hutsegitea"],
+)
+
+disp.plot()
+plt.title("Nahasmen-matrizea")
+plt.show()
+```
+| Terminoa | Esanahia | Enpresarentzako eragina |
+|---|---|---|
+| True Negative (TN) | Hutsegiterik ez dagoela zuzen aurreikusi da. | Ez da alferrikako alertarik sortzen. |
+| False Positive (FP) | Hutsegitea iragarri da, baina ez da gertatzen. | Beharrezkoa ez den mantentze-lana edo ikuskapena eragin dezake. |
+| False Negative (FN) | Hutsegiterik ez dagoela iragarri da, baina hutsegitea gertatzen da. | Hutsegite bat garaiz ez detektatzeko arriskua dago. |
+| True Positive (TP) | Hutsegitea zuzen aurreikusi da. | Mantentze-lana aldez aurretik planifika daiteke. |
+Proiektu honetan, bereziki garrantzitsua da False Negative kopurua kontrolatzea, makina baten benetako hutsegitea garaiz ez detektatzeak ondorio ekonomiko larriak izan baititzake. Hala ere, False Positive kopuru handiegiak ere arazo operatiboak sor ditzake, beharrezkoak ez diren ikuskapenak eta mantentze-lanak eraginez.
+
+#### Kostu ekonomikoaren azterketa
+
+Atalase desberdinak alderatzean, errore mota bakoitzari lotutako kostu ekonomikoa ere hartu da kontuan. Horretarako, positibo faltsuek eragindako alferrikako ikuskapenen kostua eta negatibo faltsuek eragindako hutsegiteen kostua bereizi dira.
+
+Balidazio-multzoan lortutako emaitzen arabera:
+
+- 0,30eko atalasea: 26 positibo faltsu eta 9 negatibo faltsu. Kostu ekonomiko estimatua: 63.700 €.
+- 0,40ko atalasea: 10 positibo faltsu eta 10 negatibo faltsu. Kostu ekonomiko estimatua: 65.200 €.
+- 0,50eko atalasea: F1-score altuena lortu arren, 11 negatibo faltsu sortzen ditu, eta horrek hutsegiteak garaiz ez detektatzeko arriskua handitzen du.
+
+0,30eko atalaseak kostu ekonomiko estimatu txikiena lortzen du, baina 0,40ko atalaseak positibo faltsuen kopurua nabarmen murrizten du: 26tik 10era. Horrek beharrezkoak ez diren 16 ikuskapen saihesten ditu balidazio-multzoan.
+
+Bi atalaseen arteko kostu-aldea 1.500 €-koa da. Hala ere, 0,40ko atalaseak Precision balioa 0,634tik 0,815era igotzen du, eta F1-score balioa ere 0,720tik 0,815era hobetzen du.
+
+Bestalde, Recall balioa 0,30eko atalasearekin 0,833 da, eta 0,40koarekin 0,815. Horrek esan nahi du atalase baxuagoak benetako hutsegite gehiago detektatzen dituela, baina alarma faltsu gehiago sortzearen truke.
+
+Azterketa horren arabera, 0,40ko atalasea hautatu da azken atalase operatibo gisa. Aukeraketa horretan ez da kostu ekonomiko txikiena bakarrik bilatu; hutsegiteak detektatzeko gaitasuna, positibo faltsuen kopurua eta mantentze-taldearen lan-karga ere kontuan hartu dira.
+
+0,40ko atalaseak benetako hutsegiteen %81,5 detektatzen ditu, eta, aldi berean, beharrezkoak ez diren ikuskapenak nabarmen murrizten ditu. Horregatik, egokitzat jo da hutsegiteen prebentzioaren eta mantentze-lanen eraginkortasunaren arteko oreka lortzeko.
+
+Atalase hau ez da ereduaren berezko ezaugarri bat, baizik eta aplikazioaren behar operatiboetara egokitutako erabaki bat. Horregatik, predikzio-prozesuan probabilitateak kalkulatu eta 0,40ko balioarekin alderatzen dira.
 
 ### 4.7. Ezaugarrien garrantzia (Feature Importance) eta ereduaren biltegiratzea (`.pkl`)
+Random Forest eredua aukeratu ondoren, ereduak hutsegiteak aurreikusteko gehien erabiltzen dituen ezaugarriak aztertu dira. Horretarako, `feature_importances_` atributua erabili da.
 
+Atributu horrek entrenatutako ereduaren erabakietan ezaugarri bakoitzak duen garrantzi erlatiboa adierazten du. Horrela, sentsoreen jatorrizko neurketek eta sortutako ezaugarri eratorriek ereduaren iragarpenetan duten eragina azter daiteke.
+
+Lehenik, garrantzi-balioak DataFrame batean bildu eta handienetik txikienera ordenatu dira:
+
+```python
+import pandas as pd
+
+feature_importance = pd.DataFrame({
+    "Ezaugarria": X_train.columns,
+    "Garrantzia": model.feature_importances_,
+})
+
+feature_importance = feature_importance.sort_values(
+    by="Garrantzia",
+    ascending=False,
+)
+
+display(feature_importance)
+```
+Ondoren, emaitzak modu bisualean aztertzeko, barra horizontalen grafikoa sortu da:
+```python
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10, 6))
+
+plt.barh(
+    feature_importance["Ezaugarria"],
+    feature_importance["Garrantzia"],
+)
+
+plt.xlabel("Garrantzia")
+plt.ylabel("Ezaugarria")
+plt.title("Ereduaren ezaugarrien garrantzia")
+
+plt.gca().invert_yaxis()
+plt.tight_layout()
+plt.show()
+```
+Grafiko honen bidez, ereduak zein sentsore eta ezaugarri eratorri erabiltzen dituen gehien ikus daiteke. Bereziki interesgarria da tool_wear_min eta torque_Nm bezalako aldagaiek duten garrantzia aztertzea, makinen higadurarekin eta karga mekanikoarekin lotura zuzena baitute.
+
+Hala ere, ezaugarri baten garrantzi handiak ez du esan nahi aldagai horrek zuzenean hutsegitea eragiten duenik. Feature Importance teknikak ereduaren erabakietan aldagai bakoitzak duen ekarpena adierazten du, baina ez du kausalitate-erlaziorik frogatzen.
+
+#### Eredua biltegiratzea
+
+Entrenamendua, ereduen arteko konparazioa eta atalasearen doikuntza amaitu ondoren, hautatutako Random Forest eredua .pkl fitxategian gorde da, hurrengo fasean Scoring API zerbitzuak erabili ahal izan dezan.
+
+Horretarako, joblib liburutegia erabili da, entrenatutako eredua serializatu eta fitxategi batean gordetzeko.
+```python
+import os
+import joblib
+
+# Models direktorioa sortu, existitzen ez bada
+os.makedirs("../models", exist_ok=True)
+
+# Eredu entrenatua gorde
+joblib.dump(
+    model,
+    "../models/cnc_failure_model.pkl",
+)
+
+print("Eredua gordeta!")
+```
+Ereduaren fitxategia honako kokapen honetan gordetzen da:
+```txt
+models/
+└── cnc_failure_model.pkl
+```
+Eredua gordetzeak aukera ematen du entrenamendu-prozesua berriro exekutatu behar izan gabe aurreko fasean ikasitako portaera erabiltzeko. Horrela, hurrengo fasean FastAPI bidez garatutako Scoring API zerbitzuak fitxategia kargatu eta sentsoreen datu berrien hutsegite-probabilitatea kalkula dezake.
+
+Horretarako, ezinbestekoa da entrenamenduan erabilitako hamar ezaugarrien izenak, kodifikazioa eta ordena mantentzea. Baldintza horri esker, APIak jasotako datuak ereduak espero duen formatura egokitu eta predikzio koherenteak egin ditzake.
 ## 5. SCORING APIA ETA ML INFERENTZIA ZERBITZUA
+
 Proiektu honen bihotz prediktiboa Scoring API-a da. FastAPI bidez eraikitako mikrozerbitzu honek sentsoreen datu gordinak jasotzen ditu, denbora errealean prozesatzen ditu eta entrenatutako Machine Learning ereduaren (Random Forest) bidez hutsegite-probabilitatea itzultzen du. Emaitza hauek NiFi-k (3. fasean) erabiltzen ditu alertak bideratzeko.
 
 ### 5.1. FastAPI bidezko mikrozerbitzuaren arkitektura eta egitura
@@ -426,31 +954,31 @@ Arkitektura RESTful ereduan oinarritzen da, eta mikrozerbitzu isolatu gisa pents
 Kodean CORS (Cross-Origin Resource Sharing) middleware bat ezarri da (`CORSMiddleware`), baimendutako jatorrietatik (`localhost:3000` edo ingurune-aldagai bidez definitutakoetatik) soilik onartzeko eskaerak. Gainera, prozesamendu-denbora neurtzeko middleware pertsonalizatu bat ere barneratu da (`X-Process-Time` goiburukoa itzuliz), inferentziaren latentzia denbora errealean monitorizatzeko.
 
 ### 5.2. Ereduaren karga dinamikoa eta Pydantic balidazioa (`SentsoreSaria`)
-fizientzia bermatzeko, Machine Learning eredua (`cnc_failure_model.pkl`) ez da eskaera bakoitzean kargatzen. FastAPI-ren `@asynccontextmanager` eta `lifespan` funtzioak erabiliz, eredua memorian behin bakarrik kargatzen da aplikazioa abiaraztean. 
+Eraginkortasuna bermatzeko, Machine Learning eredua (`cnc_failure_model.pkl`) ez da eskaera bakoitzean kargatzen. FastAPI-ren `@asynccontextmanager` eta `lifespan` funtzioak erabiliz, eredua memorian behin bakarrik kargatzen da aplikazioa abiaraztean.
 
 Datuen kalitatea bermatzeko, **Pydantic** liburutegia erabili da datuen balidaziorako. `SentsoreSaria` klaseak (BaseModel) sarrerako datuen egitura eta mugak zehazten ditu zorrozki:
-* **Formatu-balidazioak:** `machine_id` eremuak patroi zehatz bat bete behar du (`^CNC-[0-9]{3}$`), eta `machine_type`-ak 'L', 'M' edo 'H' izan behar du.
-* **Muga fisikoen balidazioak:** Sentsoreen balioek muga logikoak izan behar dituzte (`rpm` 0 eta 10000 artean, tenperaturak 200.0 eta 400.0 artean, etab.).
+- **Formatu-balidazioak:** `machine_id` eremuak patroi zehatz bat bete behar du (`^CNC-[0-9]{3}$`), eta `machine_type`-ak `L`, `M` edo `H` izan behar du.
+- **Muga fisikoen balidazioak:** Sentsoreen balioek muga logikoak izan behar dituzte (`rpm` 0 eta 10000 artean, tenperaturak 200.0 eta 400.0 artean, etab.).
 
 Honek sistemaren babes-lehen-lerro gisa funtzionatzen du: datu anomaloak edo ustelak (adibidez, tenperatura negatibo ezinezko bat) eredura iritsi aurretik baztertzen dira, "Zaborra sartu, zaborra atera" (Garbage In, Garbage Out) arazoa ekidinez.
 
 ### 5.3. Ezaugarri eratorrien kalkulua eta ezaugarri-ordenaren koherentzia
 Eredu prediktiboak ez ditu sentsoreen datu gordinak bakarrik erabiltzen. Inferentzia egin aurretik, `/predict` endpoint-ak *Feature Engineering* (ezaugarrien ingeniaritza) aplikatzen du Pandas erabiliz. Aldagai eratorri hauek kalkulatzen dira bertan, entrenamendu-fasean egin zen bezalaxe:
-* `power`: `rpm` * `torque_Nm`
-* `temp_diff`: `process_temp_K` - `air_temp_K`
-* `torque_wear`: `torque_Nm` * `tool_wear_min`
-* One-hot encoding `machine_type` aldagaiarentzat (`machine_type_L`, `machine_type_M`).
+- `power`: `rpm` * `torque_Nm`
+- `temp_diff`: `process_temp_K` - `air_temp_K`
+- `torque_wear`: `torque_Nm` * `tool_wear_min`
+- One-hot encoding `machine_type` aldagaiarentzat (`machine_type_L`, `machine_type_M`).
 
 **Koherentzia kritikoa:** Eredu bat ustiatzean ematen den errore ohikoena zutabeen ordenaren aldaketa da. Kodean mekanismo bat ezarri da `model.feature_names_in_` erabiliz. Honek sarrerako DataFrame-ko zutabeak berrantolatzen ditu ereduak entrenamenduan ikasi zuen **ordena zehatzera**, eta falta den ezaugarririk balego (500 errorea emanez) abisatzen du. 
 
 ### 5.4. Atalase operatiboa eta alerta-mailen definizioa (OK, KONTUZ, LARRIA)
 Ereduak `predict_proba()` bidez hutsegite bat gertatzeko *probabilitatea* itzultzen du (0.0 - 1.0 bitartean). Makina bat noiz gelditu erabakitzeko probabilitate hori kategoria bihurtu behar da.
 
-* **Atalase nagusia (Threshold):** `0.40` (edo %40) ezarri da. Probabilitatea >= 0.40 bada, `failure_predicted = True` izango da. Atalase hau kontserbadorea da, industriako mantentze prediktiboan hobe baita aurreikuspen faltsu positibo bat (makina berrikustea ondo egon arren) makina baten apurketa garesti bat jasatea baino.
-* **Alerta-mailak (`alert_level`):** Erakundeko komunikazioa (Telegram bidezkoa) kudeatzeko, probabilitatearen arabera hiru maila semaforiko sortu dira:
-    * **OK:** prob < 0.40. Funtzionamendu normala.
-    * **KONTUZ:** 0.40 <= prob <= 0.80. Berrikuspen programatua behar da.
-    * **LARRIA:** prob > 0.80. Makinaren berehalako gelditzea eta ikuskapen kritikoa gomendatzen da.
+- **Atalase nagusia (Threshold):** `0.40` (edo %40) ezarri da. Probabilitatea >= 0.40 bada, `failure_predicted = True` izango da. Atalase hau kontserbadorea da, industriako mantentze prediktiboan hobe baita aurreikuspen faltsu positibo bat (makina berrikustea ondo egon arren) makina baten apurketa garesti bat jasatea baino.
+- **Alerta-mailak (`alert_level`):** Erakundeko komunikazioa (Telegram bidezkoa) kudeatzeko, probabilitatearen arabera hiru maila semaforiko sortu dira:
+  - **OK:** prob < 0.40. Funtzionamendu normala.
+  - **KONTUZ:** 0.40 <= prob <= 0.80. Berrikuspen programatua behar da.
+  - **LARRIA:** prob > 0.80. Makinaren berehalako gelditzea eta ikuskapen kritikoa gomendatzen da.
 
 ### 5.5. APIaren autentifikazioa eta segurtasuna (`X-API-Key`)
 #### Segurtasun Logikoa (X-API-Key)
@@ -476,7 +1004,7 @@ APIa plataformarekiko independentea izan dadin, Docker bidez ontziratu da `pytho
 
 Ingurunea behar bezala dabilela eta ereduak kargatu direla ziurtatzeko, ondorengo deia egin daiteke (`/health`):
 ```bash
-curl -X GET "http://localhost:8000/health" -H "X-API-Key: CNCGuard_Guadalquia_Key_2026_x89a01!"
+curl -X GET "http://localhost:8000/health" -H "X-API-Key: ${API_KEY_SECRET}"
 ```
 Erantzun espero dena: `{"status":"ok","model_loaded":true,"model_path":"../models/cnc_failure_model.pkl"}`
 
@@ -484,7 +1012,7 @@ Predikzio bat egiteko simulazioa (`/predict`):
 ```bash
 curl -X POST "http://localhost:8000/predict" \
      -H "Content-Type: application/json" \
-     -H "X-API-Key: CNCGuard_Guadalquia_Key_2026_x89a01!" \
+     -H "X-API-Key: ${API_KEY_SECRET}" \
      -d '{
            "timestamp": "2024-05-15 10:30:00",
            "machine_id": "CNC-042",
@@ -526,7 +1054,7 @@ Datu garbi eta eraldatu hauek `cnc-silver` indizean gordetzen dira, datu gordine
 Eredu prediktiboarekin integratzeko, NiFi-k eskaerak egiten dizkio FastAPI bidez altxatutako zerbitzuari. Komunikazio hau hiru urratsetan gertatzen da:
 
 1. **Datuen Prestaketa:** `EvaluateJsonPath` erabiliz sentsorearen atributuak ateratzen dira eta `JoltTransformJSON` prozesadoreak mezuaren egitura berrantolatzen du, APIak eskatzen duen sarrera formatu zehatza sortuz.
-2. **Deia (Inferentzia):** **`InvokeHTTP`** prozesadoreak `POST` eskaera bat bidaltzen du `http://scoring-api:8000/predict` helbidera. Komunikazioa babesteko, `X-API-Key` goiburukoa (`CNCGuard_Guadalquia_Key_2026_x89a01!`) bidaltzen da.
+2. **Deia (Inferentzia):** **`InvokeHTTP`** prozesadoreak `POST` eskaera bat bidaltzen du `http://scoring-api:8000/predict` helbidera. Komunikazioa babesteko, `X-API-Key` goiburukoa (`${API_KEY_SECRET}`) bidaltzen da.
 3. **Erantzunaren Erauzketa:** APIak azterketa egin ondoren, JSON formatuko erantzuna itzultzen du. Bigarren `EvaluateJsonPath` batek erantzun horretatik hiru balio kritiko ateratzen ditu eta flowfile-aren atributu gisa ezartzen ditu hurrengo urratsetarako: `failure_predicted`, `failure_probability` eta `alert_level`.
 
 ### 6.4. Aurreikuspenen bideratze dinamikoa eta indize anitzeko biltegiratzea Elasticsearch-en
