@@ -280,6 +280,23 @@ CSV formatua aukeratu da datuak modu sinple eta egituratuan gordetzeko, baita Fi
 
 ### 2.2. Filebeat: konfigurazioa, iragazketa eta egoeraren erregistrua
 Proiektu honetan, Filebeat datuak biltzeko eragile arin gisa (lightweight shipper) erabiltzen da. Bere eginkizun nagusia sentsoreek sortutako CSV fitxategiak irakurtzea eta, ia denbora errealean, Apache Kafkara bidaltzea da, datuen prozesamendu-fluxuarekin jarraitzeko.
+#### Sarreren Konfigurazioa eta Iragazketa (Inputs)
+
+- **Datu-iturburua:** Filebeat-ek `filestream` motako sarrera erabiltzen du. Karpeta espezifiko bat monitorizatzen du, zehazki `/mnt/cnc-stream/*.csv` bidean dauden fitxategi guztiak irakurriz.
+- **Goiburukoen iragazketa:** CSV fitxategien lehen lerroa (goiburukoa) ez prozesatzeko, `exclude_lines: ['^timestamp']` parametroa aplikatzen da, "timestamp" hitzarekin hasten diren lerroak baztertuz.
+- **Fitxategi zehatzen bazterketa:** Segurtasun edo prozesamendu-logikako arrazoiengatik, zenbait fitxategi baztertzen dira, hala nola `_00005.csv` amaiera dutenak (`prospector.scanner.exclude_files: ['_00005\.csv$']`).
+- **Egoeraren kudeaketa:** Fitxategi inaktiboak modu eraginkorrean kudeatzeko, 1 minutu baino gehiago inaktibo egon diren fitxategiak ixteko agintzen zaio Filebeat-i (`close.on_state_change.inactive: 1m`). Gainera, hatz-marka bidezko jarraipena eta fitxategi-identitate estandarra desgaituta daude konfigurazio honetan.
+
+#### Irteeraren Konfigurazioa (Output)
+
+- **Helmugako Broker-a:** Datu garbiak Apache Kafkara bidaltzen dira zuzenean, `kafka:9092` ostalaria helburu hartuta.
+- **Topic-a eta Formatua:** Mezuak `cnc-sensors-raw` gaian (topic) idazten dira. Payload-a formatu garbian bidaltzeko, mezuaren edukia zuzenean testu gisa (`string: '%{[message]}'`) kodetzen duen kodeketa (codec) erabiltzen da.
+
+#### Docker Integrazioa, Bolumenak eta Erregistroa
+
+- **Inplementazioa eta Baimenak:** `docker.elastic.co/beats/filebeat:8.11.1` irudia exekutatzen da. Sistemaren baimenekin sor daitezkeen gatazkak ekiditeko, edukiontzia `root` erabiltzaile gisa abiatzen da. Exekuzio-komandoari `--strict.perms=false` gehitzen zaio konfigurazio-fitxategiaren irakurketa ahalbidetzeko baimen estriktuak ezarri gabe.
+- **Kanpoko Datu-sarrera (CIFS):** Sentsoreen datuak sareko direktorio partekatu batetik eskuratzen dira. Horretarako, `cnc-stream-cifs` izeneko bolumena konfiguratzen da CIFS protokoloaren bidez, sareko `//192.168.75.150/cnc-stream` jatorria irakurketa-soileko (`ro`) moduan mapatuz `cncuser` kredentzialen bidez. Bolumen hau edukiontziaren `/mnt/cnc-stream` barne-bidean muntatzen da.
+- **Egoeraren Erregistroa (Registry):** Filebeat-ek fitxategi bakoitzean nora arte irakurri duen (offset-a) gogoratu dezan berrabiarazte bat gertatuko balitz, `filebeat-data` izeneko bolumen iraunkor bat muntatzen da `/usr/share/filebeat/data` bidean. Horrela bermatzen da daturik ez dela bikoizten eta bat bera ere ez dela galtzen.
 
 ### 2.3. Apache Kafka: broker-a, topic-ak (`cnc-sensors-raw`), partizioak eta kontsumitzaile-taldeak
 Proiektu honetan, Apache Kafka datuen ingestio-fluxuaren ardatz nagusia edo *broker*-a da. Bere funtzio nagusia sentsoreen datu gordinak denbora errealean jasotzea eta prozesamendu-sistemek (Apache NiFi) kontsumitu ditzaten eskuragarri jartzea da.
@@ -311,46 +328,66 @@ kafka-topics --describe --topic cnc-sensors-raw --bootstrap-server localhost:909
 ```
 Komando honek topic-aren egoera orokorra eta partizio bakoitzaren nodo liderra zein den erakusten du, dena prest dagoela ziurtatuz ingestioarekin hasteko.
 
-### 2.4. Apache NiFi: hasierako ingestio-flow-a eta Controller Service-ak
-Proiektu honetan Apache NiFi erabili dugu datuen fluxu osoa kudeatzeko, sentsoreetatik Elasticsearch-era eta Machine Learning eredura bideratuz. Bi fluxu nagusi diseinatu dira (1. fasea eta 3. fasea), baina **3. faseko fluxuak 1. faseko ingestio-prozesu bera biltzen du bere baitan**. 
+### 2.4. Apache NiFi: Datuen Ingestioa, Streaming-a eta Controller Service-ak
 
-Jarraian, prozesu osoaren arkitektura eta osagaiak zehazten dira.
+Proiektu honetan Apache NiFi erabili dugu datuen fluxu osoa kudeatzeko, sentsoreetatik Elasticsearch-era eta Machine Learning eredura bideratuz. Bi fluxu nagusi diseinatu dira (1. fasea eta 3. fasea), baina **3. faseko fluxuak 1. faseko ingestio-prozesu bera biltzen du bere baitan**.
 
-### *1. Ingestio-fluxuaren oinarria (1. Fasea)*
+Jarraian, prozesu osoaren arkitektura, osagaiak eta konfigurazioak zehazten dira.
 
-3. faseko fluxuaren lehen zatia hasierako ingestio-fluxuaren (*fase1_ingest.json*) kopia zehatza da. Helburua Kafkatik datu gordinak irakurri eta Elasticsearch-en gordetzea da. Urrats hauek jarraitzen ditu:
+#### 1. Ingestio-fluxuaren oinarria (1. Fasea)
 
-1.  **`ConsumeKafka`:** Kafkako `cnc-sensors-raw` *topic*-era harpidetzen da datuak denbora errealean jasotzeko.
-2.  **`ConvertRecord`:** Kafkatik jasotako CSV formatuko datuak JSON formatura bihurtzen ditu, prozesamendua errazteko (`CSVReader` eta `JsonRecordSetWriter` erabiliz).
-3.  **`RouteOnAttribute`**: Iragazki sinple bat aplikatzen du datu hutsak edo baliogabeak baztertzeko (`${fileSize:gt(0)}`).
-4.  **`PutElasticsearchJson`**: Datu gordinak (*raw*) Elasticsearch-eko `cnc-sensors` indizean gordetzen ditu zuzenean.
+3. faseko fluxuaren lehen zatia hasierako ingestio-fluxuaren (*fase1_ingest.json*) kopia zehatza da. Helburua Kafkatik datu gordinak irakurri eta Elasticsearch-en gordetzea da.
 
-### *2. Streaming eta Iragarpen Fluxu Aurreratua (3. Fasea)*
+![1. Faseko Ingestio Fluxua](bidea/nifi_fase1_argazkia.png)
 
-Behin datu gordinak prozesatuta eta gordeta (aurreko atalean bezala), fluxuak bide berri bat irekitzen du datu horiek denbora errealean Machine Learning API-ra bidaltzeko eta emaitzen arabera ekintzak burutzeko (*fase3_streaming.json*).
+Urrats eta prozesadore hauek jarraitzen ditu:
 
-Fase honetako prozesadore nagusiak hauek dira:
+- **`ConsumeKafka`:** Kafkako `cnc-sensors-raw` *topic*-era harpidetzen da datuak denbora errealean jasotzeko.
+- **`ConvertRecord`:** Kafkatik jasotako CSV formatuko datuak JSON formatura bihurtzen ditu, prozesamendua errazteko.
+- **`RouteOnAttribute`:** Iragazki sinple bat aplikatzen du datu hutsak edo baliogabeak baztertzeko (`${fileSize:gt(0)}` baldintzarekin).
+- **`PutElasticsearchJson`:** Datu gordinak (*raw*) Elasticsearch-eko `cnc-sensors` indizean gordetzen ditu zuzenean, geroago aztertu ahal izateko.
 
-#### A) Datuen prestaketa API-rako
-*   **`EvaluateJsonPath`**: Datuen fluxutik beharrezko eremuak ateratzen ditu (`machine_id`, `machine_type`, `timestamp`) eta atributu gisa gordetzen ditu.
-*   **`JoltTransformJSON`**: JSON mezuaren egitura eraldatzen du, Scoring API-ak (FastAPI) eskatzen duen formatu zehatzera egokituz.
+#### 2. Streaming eta Iragarpen Fluxu Aurreratua (3. Fasea)
 
-#### B) Machine Learning Ereduari deia
-*   **`InvokeHTTP` (Scoring API)**: API-ari `POST` eskaera bat egiten dio datuekin (`http://scoring-api:8000/predict`). Segurtasunerako `X-API-Key` bat bidaltzen du goiburukoan.
-*   **`EvaluateJsonPath`**: API-ak itzultzen duen erantzunetik iragarpenaren emaitzak erauzten ditu: `failure_predicted`, `failure_probability` eta `alert_level`.
+Behin datu gordinak prozesatuta, fluxuak bide berri bat irekitzen du datu horiek denbora errealean Machine Learning API-ra bidaltzeko eta emaitzen arabera ekintzak burutzeko (*fase3_streaming.json*).
 
-#### C) Bideratzea eta Biltegiratzea (Emaitzen arabera)
-Iragarpenaren emaitza aztertu ondoren, **`RouteOnAttribute`** prozesadore baten bidez (egoeraren arabera) fluxua hainbat adarretan banatzen da:
+![3. Faseko Streaming eta ML Fluxua](bidea/nifi_fase3_argazkia.png)
 
-*   **`PutElasticsearchJson OK`**: Makinak ondo funtzionatzen badu, datuak `cnc-prediction2` indizean gordetzen dira.
-*   **`PutElasticsearchJson FALLOS`**: Makinan anomalia bat edo akats bat aurreikusten bada, informazioa `cnc-error2` indizean gordetzen da.
-*   **`UpdateRecord` & `PutElasticsearchJson (Silver)`**: Tenperaturak Kelvinetik Celsius gradutara eraldatzen dira eta datu garbiagoak `cnc-silver` indizean gordetzen dira, gerora analisi historikoa egiteko.
+Fase honetako prozesadore nagusiak lau multzotan banatzen dira:
 
-#### D) Alerta Sistema (Telegram)
+**A) Datuen prestaketa API-rako**
+
+- **`EvaluateJsonPath`:** Datuen fluxutik beharrezko eremuak ateratzen ditu (`machine_id`, `machine_type`, `timestamp`) eta NiFi atributu gisa gordetzen ditu memorian.
+- **`JoltTransformJSON`:** JSON mezuaren egitura eraldatzen du (Jolt espezifikazioen bidez), Scoring API-ak (FastAPI) eskatzen duen sarrera-formatu zehatzera egokituz.
+
+**B) Machine Learning Ereduari deia**
+
+- **`InvokeHTTP` (Scoring API):** API-ari `POST` eskaera bat egiten dio datuekin (`http://scoring-api:8000/predict`). Segurtasunerako `X-API-Key` bat bidaltzen du goiburukoan, baimenik gabeko sarbideak ekiditeko.
+- **`EvaluateJsonPath`:** API-ak itzultzen duen JSON erantzunetik iragarpenaren emaitzak erauzten ditu: `failure_predicted`, `failure_probability` eta `alert_level`.
+
+**C) Bideratzea eta Biltegiratzea (Emaitzen arabera)**
+
+Iragarpenaren emaitza aztertu ondoren, **`RouteOnAttribute`** prozesadore baten bidez fluxua hainbat adarretan banatzen da (APIak itzulitako alerta-mailaren arabera: OK, KONTUZ, LARRIA):
+
+- **`PutElasticsearchJson OK`:** Makinak ondo funtzionatzen badu, datuak `cnc-prediction2` indizean gordetzen dira.
+- **`PutElasticsearchJson FALLOS`:** Makinan anomalia bat aurreikusten bada (KONTUZ edo LARRIA), informazioa `cnc-error2` indize bereizian gordetzen da.
+- **`UpdateRecord` & `PutElasticsearchJson (Silver)`:** Paraleloki, tenperaturak Kelvinetik Celsius gradutara eraldatzen dira `UpdateRecord` erabiliz, eta datu garbiago horiek `cnc-silver` indizean gordetzen dira, gerora analisi historikoa egiteko.
+
+**D) Alerta Sistema (Telegram)**
+
 API-ak makina baten hutsegite arriskua detektatzen badu, denbora errealeko abisuak bidaltzen dira mantentze-taldeko Telegram kanalera:
 
-*   **`ReplaceText KONTUZ` / `LARRIA`**: Iragarritako alerta-mailaren arabera (KONTUZ edo LARRIA), Telegramerako mezu formatu berezi bat (Markdown) sortzen du, makinaren ID-a, data eta egoera txertatuz.
-*   **`InvokeHTTP TELEGRAM`**: Telegramen API ofizialera deitzen du bot baten bidez (`/sendMessage`), abisua mantentze-taldearen txatean berehala ager dadin.
+- **`ReplaceText KONTUZ` / `LARRIA`:** Iragarritako alerta-mailaren arabera, Telegramerako mezu formatu berezi bat (Markdown) sortzen du, makinaren ID-a, data eta egoera txertatuz.
+- **`InvokeHTTP TELEGRAM`:** Telegramen API ofizialera deitzen du bot baten bidez (`/sendMessage`), abisua mantentze-taldearen txatean berehala ager dadin.
+
+#### 3. Controller Services (Atzeko planoko zerbitzuak)
+
+Fluxu hauek behar bezala exekutatu daitezen, NiFi-n ezinbestekoak diren zenbait *Controller Service* konfiguratu dira:
+
+- **`Kafka3ConnectionService`:** Kafkarekin (`kafka:9092`) konexio seguru eta egonkorra mantentzeaz arduratzen da.
+- **`CSVReader` eta `JsonRecordSetWriter`:** `ConvertRecord` prozesadoreak erabiltzen ditu sarrerako datuak CSV gisa interpretatzeko eta irteera JSON formatu egituratuan idazteko.
+- **`ElasticSearchClientServiceImpl`:** Elasticsearch-erako konexio zentralizatua kudeatzen du (`http://elasticsearch:9200`), prozesadore guztiek konexio bera partekatu dezaten, baliabideak optimizatuz.
+
 ## 3. DATUEN AZTERKETA ESPLORATZAILEA (EDA) ETA AURREPROZESATZEA
 
 ### 3.1. Entrenamendu-datasetaren azterketa (`ai4i2020_train.csv`)
@@ -463,16 +500,56 @@ Erantzuna JSON formatuan itzuliko da, makinak akatsik aurreikusten duen, kalkula
 
 ## 6. DENBORA ERREALEKO PIPELINEAREN INTEGRAZIOA ETA ALERTA-SISTEMA
 
+Proiektuaren azken fase honek aurrez garatutako osagai guztiak lotzen ditu: datuen ingestioa (Kafka), biltegiratzea (Elasticsearch), inferentzia prediktiboa (Scoring API) eta mantentze-taldearen komunikazioa (Telegram). Apache NiFi erabili da orkestratzaile edo *middleware* gisa, prozesu guzti hauek denbora errealean eta modu automatizatuan kudeatzeko.
+
 ### 6.1. NiFi Streaming Middleware-aren flow osoaren diseinua
+
+NiFi-ko 3. faseko fluxua (*fase3_streaming*) diseinatu da erabakiak denbora errealean hartzeko motor gisa funtzionatzeko. Kafkatik iristen diren sentsore-datu gordinak kontsumitzen ditu, formatua API-rako egokitzen du, erantzun prediktiboa jasotzen du eta, emaitzaren arabera, bide ezberdinetatik bideratzen ditu datuak.
+
+Jarraian, diseinu arkitektonikoaren ikuspegi orokorra ikus daiteke:
+
+Prozesua hainbat fasetan banatzen da egitura modularra mantentzeko, erroreak gertatuz gero zein puntutan gertatu diren erraz identifikatzeko (Datuen prestaketa, ML inferentzia, Eraldaketa fisikoa eta Alerta-sistema).
 
 ### 6.2. Datuen eraldaketa fisikoa (Kelvin → Celsius bihurketa)
 
+Analisi historikorako eta Kibana paneletan gizakientzat ulergarriagoak diren datuak izateko, tenperaturak (hasieran Kelvinetan jasotzen direnak) Celsius gradutara bihurtzeko prozesua inplementatu da.
+
+Eraldaketa hau **`UpdateRecord`** prozesadorearen bidez egiten da. Fitxategia osorik irakurri (JsonTreeReader erabiliz) eta zuzenean eremu zehatzetan eragiketa matematikoa aplikatzen du NiFi-ren *Expression Language* erabiliz:
+
+- `/air_temp_K`: `${field.value:toNumber():minus(273.15)}`
+- `/process_temp_K`: `${field.value:toNumber():minus(273.15)}`
+
+Datu garbi eta eraldatu hauek `cnc-silver` indizean gordetzen dira, datu gordinetatik bereizita.
+
 ### 6.3. NiFi eta Scoring APIaren arteko komunikazioa (`InvokeHTTP`)
+
+Eredu prediktiboarekin integratzeko, NiFi-k eskaerak egiten dizkio FastAPI bidez altxatutako zerbitzuari. Komunikazio hau hiru urratsetan gertatzen da:
+
+1. **Datuen Prestaketa:** `EvaluateJsonPath` erabiliz sentsorearen atributuak ateratzen dira eta `JoltTransformJSON` prozesadoreak mezuaren egitura berrantolatzen du, APIak eskatzen duen sarrera formatu zehatza sortuz.
+2. **Deia (Inferentzia):** **`InvokeHTTP`** prozesadoreak `POST` eskaera bat bidaltzen du `http://scoring-api:8000/predict` helbidera. Komunikazioa babesteko, `X-API-Key` goiburukoa (`CNCGuard_Guadalquia_Key_2026_x89a01!`) bidaltzen da.
+3. **Erantzunaren Erauzketa:** APIak azterketa egin ondoren, JSON formatuko erantzuna itzultzen du. Bigarren `EvaluateJsonPath` batek erantzun horretatik hiru balio kritiko ateratzen ditu eta flowfile-aren atributu gisa ezartzen ditu hurrengo urratsetarako: `failure_predicted`, `failure_probability` eta `alert_level`.
 
 ### 6.4. Aurreikuspenen bideratze dinamikoa eta indize anitzeko biltegiratzea Elasticsearch-en
 
+APIak itzulitako alerta-mailaren arabera, fluxuak erabaki dinamikoak hartzen ditu **`RouteOnAttribute`** prozesadore zentrala erabiliz. Lau norabide edo erlazio ezberdin definitu dira:
+
+- **`prediccion_ok`:** `alert_level` atributua 'OK' denean eta 200 HTTP kodea jaso denean aktibatzen da. Datuak `PutElasticsearchJson OK` prozesadorera doaz, `cnc-prediction2` indizean gordez.
+- **`fallo_maquina`:** Alerta-maila 'OK' EZ denean aktibatzen da. Datuak `PutElasticsearchJson FALLOS` prozesadorera bideratzen dira eta `cnc-error2` indize espezifikoan biltegiratzen dira, erroreak modu azkarrean kontsultatu ahal izateko.
+- Era berean, fluxu nagusitik adar paralelo bat sortzen da datu eraldatuak (Celsius) etengabe `cnc-silver` indizean txertatzeko (6.2 atalean azaldutakoa).
+
 ### 6.5. Alerta-sistema automatizatua Telegram bidez (KONTUZ eta LARRIA)
 
+Matxura bat gertatzeko probabilitatea altua denean, mantentze-taldeak berehala jakin behar du. Horretarako, *RouteOnAttribute* prozesadore berak `kontuz` eta `larria` adar espezifikoak aktibatzen ditu.
+
+Bide hauetako bakoitzean **`ReplaceText`** prozesadore bat dago, jatorrizko datuen edukia ezabatu eta Telegramen APIak ulertzen duen JSON mezu (Payload) batekin ordezkatzeko. Adibidez, mezu *LARRIA*ren kasuan, formatu hau erabiltzen da Markdown sintaxiarekin:
+
+```json
+{
+  "chat_id": "-1004449949436",
+  "text": "🚨 *ABISU KRITIKOA (LARRIA) CNC MAKINEAN!* 🚨\n\n*Taldea:* 3.Taldea-CNC\n*Makina:* ${machine_id}\n*Larritasuna:* LARRIA\n*Egoera:* Anomalia kritiko bat detektatu da funtzionamenduan.\n*Data:* ${now():format('yyyy-MM-dd HH:mm:ss')}",
+  "parse_mode": "Markdown"
+}
+```
 ## 7. USTIAPENA, BISTARATZEA ETA MONITORIZAZIOA KIBANA-N
 
 ### 7.1. Kibana Data View eta Index Pattern-en konfigurazioa
