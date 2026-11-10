@@ -59,7 +59,7 @@ Horretarako, datuak CSV fitxategietatik hartu eta Filebeat, Kafka eta NiFi erabi
 Proiektuaren esparru teknikoak honako osagai hauek biltzen ditu: Docker bidezko azpiegitura edukiontziratua, datu-ingestioa eta streaming-a, datuen aurreprozesatzea, ML ereduaren entrenamendua, FastAPI bidezko inferentzia-zerbitzua, Elasticsearch eta Kibana bidezko monitorizazioa, eta alerta automatizatuak.
 
 ### 1.2. Arkitektura globalaren diagrama eta datu-fluxua
-Atal honetan proiektuaren funtzionamendu orokorra eta informazioaren ibilbidea azaltzen dira. 
+Atal honetan proiektuaren funtzionamendu orokorra eta informazioaren ibilbidea azaltzen dira.
 
 Jarraian agertzen den diagramak (Mermaid bidez diseinatua) sistemaren osagai nagusiak, haien arteko elkarrekintzak eta datu-fluxua modu bisual eta argian erakusten ditu. Irudikapen honi esker, sistemaren prozesu osoa –hasierako interakziotik hasi eta amaierako emaitzara arte– errazago ulertu ahal izango da.
 ```mermaid
@@ -240,7 +240,68 @@ Ondoren, dagokion ingurunean behar diren kredentzialak eta konfigurazio-balioak 
 Horrela, proiektuaren konfigurazio-egitura partekatzen da, baina kredentzial pertsonalak eta informazio sentikorra ez dira Git biltegian gordetzen.
 
 **Garrantzitsua:** `.env.example` fitxategiak ez ditu benetako pasahitzak izan behar. Hala ere, zuen azpiegiturak CIFS partekatutako karpeta eta gainerako zerbitzuak behar dituenez, exekutatzeko benetako kredentzialak modu seguruan partekatu beharko dituzue, adibidez, kanal pribatu baten bidez.
+
 ### 1.4. Fitxategi partekatuaren konfigurazioa eta muntaketa (CIFS / NFS)
+
+Windows eta Docker Desktop (WSL2) arteko ingurunean saretik datozen `.csv` fitxategiak denbora errealean eta baimen-arazorik gabe irakurri ahal izateko, montaje birtuala WSL2 bidez bideratu da.
+
+Docker Desktop-en arkitektura dela eta, edukiontziek ezin dute zuzenean Windows-eko `N:\` sare-unitatea edo UNC bide-izenak (`\\192.168.75.150\...`) modu naturalean atzitu File Sharing baimen espliziturik gabe. Hori konpontzeko, Windows-eko `N:` unitatea WSL2-ren babespeko `/mnt/wsl/` direktorio globalean muntatu da `drvfs` kontrolatzailea erabiliz, edukiontzi guztientzat atzigarri egon dadin.
+
+#### 1.4.1 WSL2 bidezko muntaketa komandoak (Host-ean)
+
+Prozesua automatizatzeko edo eskuz egiteko exekutatutako komandoak:
+
+```powershell
+# 1. WSL2 barruan direktorio partekatua sortu
+wsl -d Ubuntu -u root mkdir -p /mnt/wsl/cnc-stream
+
+# 2. Windows-eko N: sare-unitatea drvfs bidez muntatu
+wsl -d Ubuntu -u root mount -t drvfs 'N:' /mnt/wsl/cnc-stream
+
+# 3. Fitxategiak denbora errealean iristen ari direla egiaztatu
+wsl -d Ubuntu ls -la /mnt/wsl/cnc-stream
+```
+#### 1.4.2 Docker Compose bidezko bolumenaren mapaketa
+
+docker-compose.yml fitxategian, Filebeat zerbitzuari WSL2ko bide-izen partekatu hori esleitu zaio:
+
+```YAML
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: filebeat
+    user: root
+    command: ["filebeat", "-e", "-strict.perms=false"]
+    volumes:
+      - /mnt/wsl/cnc-stream:/mnt/cnc-stream:ro
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - filebeat-data:/usr/share/filebeat/data
+    depends_on:
+      - kafka
+```
+
+#### Filebeat ingesta konfigurazioa (filebeat.yml)
+
+Filebeat-ek sarrerako .csv fitxategi berriak detektatu eta Kafkako cnc-stream topikora bideratzeko konfigurazioa:
+
+```YAML
+filebeat.inputs:
+  - type: filestream
+    id: cnc-stream
+    paths:
+      - /mnt/cnc-stream/*.csv
+
+    # CSV fitxategien goiburuko izenak iragazi (ez bidali mezu gisa)
+    exclude_lines: ['^machine_id,']
+
+output.kafka:
+  hosts: ["kafka:29092"]
+  topic: "cnc-stream"
+  codec.format:
+    string: '%{[message]}'
+
+logging.level: info
+logging.to_files: false
+```
 
 ## 2. DATU-INGESTIOA ETA STREAMING AZPIEGITURA
 
@@ -949,7 +1010,7 @@ Proiektu honen bihotz prediktiboa Scoring API-a da. FastAPI bidez eraikitako mik
 
 ### 5.1. FastAPI bidezko mikrozerbitzuaren arkitektura eta egitura
 APIa **FastAPI** framework-aren bidez garatu da, bere errendimendu altuagatik eta asinkronismoa kudeatzeko duen erraztasunagatik ezaguna. Zerbitzari gisa **Uvicorn** erabiltzen da.
-Arkitektura RESTful ereduan oinarritzen da, eta mikrozerbitzu isolatu gisa pentsatuta dago. Horrek esan nahi du bere ardura bakarra (Single Responsibility Principle) inferentzia egitea dela. 
+Arkitektura RESTful ereduan oinarritzen da, eta mikrozerbitzu isolatu gisa pentsatuta dago. Horrek esan nahi du bere ardura bakarra (Single Responsibility Principle) inferentzia egitea dela.
 
 Kodean CORS (Cross-Origin Resource Sharing) middleware bat ezarri da (`CORSMiddleware`), baimendutako jatorrietatik (`localhost:3000` edo ingurune-aldagai bidez definitutakoetatik) soilik onartzeko eskaerak. Gainera, prozesamendu-denbora neurtzeko middleware pertsonalizatu bat ere barneratu da (`X-Process-Time` goiburukoa itzuliz), inferentziaren latentzia denbora errealean monitorizatzeko.
 
@@ -969,7 +1030,7 @@ Eredu prediktiboak ez ditu sentsoreen datu gordinak bakarrik erabiltzen. Inferen
 - `torque_wear`: `torque_Nm` * `tool_wear_min`
 - One-hot encoding `machine_type` aldagaiarentzat (`machine_type_L`, `machine_type_M`).
 
-**Koherentzia kritikoa:** Eredu bat ustiatzean ematen den errore ohikoena zutabeen ordenaren aldaketa da. Kodean mekanismo bat ezarri da `model.feature_names_in_` erabiliz. Honek sarrerako DataFrame-ko zutabeak berrantolatzen ditu ereduak entrenamenduan ikasi zuen **ordena zehatzera**, eta falta den ezaugarririk balego (500 errorea emanez) abisatzen du. 
+**Koherentzia kritikoa:** Eredu bat ustiatzean ematen den errore ohikoena zutabeen ordenaren aldaketa da. Kodean mekanismo bat ezarri da `model.feature_names_in_` erabiliz. Honek sarrerako DataFrame-ko zutabeak berrantolatzen ditu ereduak entrenamenduan ikasi zuen **ordena zehatzera**, eta falta den ezaugarririk balego (500 errorea emanez) abisatzen du.
 
 ### 5.4. Atalase operatiboa eta alerta-mailen definizioa (OK, KONTUZ, LARRIA)
 Ereduak `predict_proba()` bidez hutsegite bat gertatzeko *probabilitatea* itzultzen du (0.0 - 1.0 bitartean). Makina bat noiz gelditu erabakitzeko probabilitate hori kategoria bihurtu behar da.
@@ -1080,16 +1141,170 @@ Bide hauetako bakoitzean **`ReplaceText`** prozesadore bat dago, jatorrizko datu
 ```
 ## 7. USTIAPENA, BISTARATZEA ETA MONITORIZAZIOA KIBANA-N
 
+
+Dashboard:
+
+
+![alt text](DashboardGenerala.png)
+
+
 ### 7.1. Kibana Data View eta Index Pattern-en konfigurazioa
+
+
+Data View:
+
+
+![alt text](images/Dataview.png)
+
 
 ### 7.2. Panela eta bistaratzeak (KPIak, line chart-ak, heatmap-ak eta gertaera-taulak)
 
+
+KPIak eta Metrika Nagusiak
+
+
+Hutsegite-probabilitate maximoa (Gauge/Termometroa): Arrisku-maila maximoa adierazten du (berdea/horia/gorria).
+
+
+![alt text](images/Hutsegite-probabilitatemaximoa.png)
+
+
+Akats Globalak: Instalazio osoko akatsen portzentaje orokorra.
+
+
+![alt text](images/AkatsGlobalak.png)
+
+
+Aktibo dauden Makinak: Une honetan funtzionatzen eta datuak bidaltzen ari diren CNC makina kopurua.
+
+
+![alt text](images/AktiboDaudenmakinak.png)
+
+
+Tenperatura Media: Sentsore guztien batez besteko tenperatura orokorra.
+
+
+![alt text](images/TenperaturaMedia.png)
+
+
+Line Chart-ak
+
+
+Tenperatura Sensore Datuen Media: Sentsoreen tenperaturaren bilakaera orokorra (media eta mediana) adierazten du denboran zehar.
+
+
+![alt text](images/TenperaturaSensoreDatuenMedia.png)
+
+
+Tenp bilakaera denboran zehar (makina bakoitzeko): Makina bakoitzaren tenperaturaren bilakaera indibiduala erakusten duen linea-grafiko anitza. Honen bidez, makina jakin baten berotze ez-ohikoak detektatzen dira.
+
+
+![alt text](images/TenpBilakaeraDenboranZehar(MakinaBakoitzeko).png)
+
+
+Heatmap-ak eta Desgaste Matrizea
+
+
+Matxura Portzentaia: Makina bakoitzaren matxura edo desgaste portzentajea erakusten du kolore-eskala baten bidez. Gorri dauden makinek premiazko mantentzea behar dutela adierazten du.
+
+
+![alt text](images/MatxuraPortzentaia.png)
+
+
+Gertaera-taulak
+
+
+Alerta Data: Azken alerten erregistro xehatua denbora errealeko taula batean (Makinak, Alerta lvl, Data). Horrela, teknikariek azken gertaera larriak auditatu ditzakete.
+
+
+![alt text](images/AlertaData.png)
+
+
+Beste Bistaratze Batzuk
+
+
+Makinak eta Alertak: Arazo gehien dituzten makinak zerrendatzen ditu, alerta motaren arabera desglosatuta (KONTUZ vs LARRIA).
+
+
+![alt text](images/MakinaketaAlertak.png)
+
+
+Akats Kopurua Motaren Arabera: Akats mota bakoitzaren maiztasuna erakusten du.
+
+
+![alt text](images/AkatsKopuruaMotarenArabera.png)
+
+
+Alerten Portzentaia: Sistemaren egoera orokorraren banaketa.
+
+
+![alt text](images/Donut.png)
+
+
 ### 7.3. Denbora errealeko monitorizazioa eta sentsoreen jarraipena
+
+
+Anomalien Detekzio Azkarra: Sentsoreen tenperatura-lineetan gailur neurgarri bat gertatzen denean (adibidez, 50-60°C arteko igoera azkarra), sistema automatikoki ikus daiteke kaltetutako CNC makinan.
+
+
+Mantenimendu Prediktiboa eta Priorizazioa: Matxura Portzentaia eta Makinak eta Alertak grafikoen bidez, teknikari bati lehentasuna ematen zaio zein makinari egin behar dion ikuskapena matxura larriago bat gertatu aurretik.
+
+
+Causa-Raíz Analisia: Alerta jakin bat klikatzean (iragazki dinamikoen bidez), panel osoa egokitzen da makina horren tenperatura eta akatsen historiala soilik erakusteko, porrotaren jatorria identifikatzen lagunduz.
 
 ## 8. ONDORIOAK ETA ETORKIZUNEKO HOBEKUNTZAK
 
 ### 8.1. Lortutako emaitzen laburpena eta betetako helburuak
 
+CNC Guard proiektuak arrakastaz inplementatu du industria 4.0 ingurunera bideratutako denbora errealeko mantentze prediktiboko arkitektura oso bat. Hasieran ezarritako helburu nagusi eta tekniko guztiak bete dira, datuen jatorritik hasi eta azken bistaratzera zein alerta-sistemara arteko fluxua ziurtatuz.
+
+Lortutako lorpen nagusiak honako hauetan laburtzen dira:
+
+#### 8.1.1. **Azpiegitura edukiontziratu sendoa eta isolatua:**
+Docker eta Docker Compose bidez, 7 zerbitzu autonomo (Kafka, Filebeat, NiFi, Elasticsearch, Kibana, Scoring API eta azpiegitura laguntzailea) modu errepikagarrian hedatzea lortu da.
+#### 8.1.2. **Denbora errealeko ingesta malgua (Streaming):**
+Windows-eko `N:` sare-unitate partekatu bidez CIFS/drvfs bidezko muntaketa eginez, Filebeat eta Kafkaren bidez 30 segundoro sartzen diren `.csv` sentsore-datuak inolako datu-galerarik gabe prozesatzea lortu da.
+#### 8.1.3. **Machine Learning eredu eraginkorra eta optimizatua:**
+AI4I 2020 datasetaren gainean egindako azterketa esploratzaile sakonari eta *Feature Engineering* lanari esker (3 aldagai eratorri berri sortuz: `power`, `temp_diff`, `torque_wear`), Random Forest eredua gailendu da. Klase-desoreka handiari (`%3,4` hutsegite soilik) `class_weight="balanced"` bidez aurre eginez eta atalase operatiboa `0,40`ra doituz, honako metrika sendoak lortu dira:
+   - **Recall (%81,5):** Benetako hutsegiteen gehienak garaiz detektatzen dira, produkzio-geldialdi garestiak saihestuz.
+   - **Precision (%81,5):** Alarma faltsuen kopurua gutxieneko mailan mantentzen da, mantentze-teknikarien turrusta-lanak ez kargatzeko.
+   - **ROC-AUC (0,9792):** Ereduak gaitasun bikaina erakutsi du egoera arrunten eta anomaloen arteko bereizketa egiteko.
+#### 8.1.4. **Scoring API azkarra eta segurua:**
+FastAPI bidez garatutako mikrozerbitzuak 10 ms baino gutxiagoko latentziarekin erantzuten du, Pydantic bidezko datu-balidazio zorrotza egiten du eta `X-API-Key` bidezko segurtasuna zein AI Act araudira egokitutako auditagarritasuna bermatzen ditu.
+#### 8.1.5. **Orkestrazio integratua eta Alerta Automatikoak:**
+Apache NiFi-k datuen eraldaketa fisikoak (Kelvin -> Celsius) egin, ML APIarekin komunikatu, datuak bideratu eta anomalia larrien kasuan Telegram bidezko abisuak berehala bidaltzen ditu eragile teknikoen mugikorretara.
+#### 8.1.6. **Eragiketa-panela Kibana-n:**
+Mantentze-taldeek denbora errealean sentsoreen bilakaera, tenperatura-igoerak, akats-maiztasunak eta orokortutako KPIak aztertzeko Dashboard integratua eta iragazgarria eskuragarri daukate.
+
 ### 8.2. Sistematik hautemandako muga teknikoak
 
+Sistemak harrera eta funtzionamendu ona erakutsi duen arren, garapen eta exekuzio fasean hainbat muga tekniko eta arkitektural identifikatu dira, etorkizuneko produkzio-inguruneei begira kontuan hartzekoak:
+
+#### 8.2.1. **Docker Desktop (Windows/WSL2) muga-arkitekturalak:**
+   - WSL2 eta Windows-eko sare-unitate partekatuen (`drvfs` / CIFS) arteko integrazioak baimen zein ikusgarritasun arazoak sortu ditu hasieran. Ekoizpen-ingurune errealetan (On-Premise Linux zerbitzari puruetan), ez da WSL2 geruzarik erabili behar, zuzeneko NFS/CIFS muntaketa bidez atzipen-denborak eta konplexutasuna murriztuz.
+#### 8.2.2. **Batch jatorria eta denbora errealeko simulazioa:**
+   - Datuak denbora errealean prozesatzen diren arren, iturburuko datuak 30 segundoro sortzen diren `.csv` fitxategi sorten (*batches*) bidez iristen dira. Benetako *Ultra-Low Latency* ingurune batean, sentsoreek datuak MQTT edo OPC-UA protokoloen bidez zuzenean Kafkara igorri beharko lituzkete, intermediate file-system geruza ezabatuz.
+#### 8.2.3. **Ereduaren statizitatea eta kontzeptu-amaitzea (Concept Drift):**
+   - Scoring APIak `.pkl` fitxategi statiko bat kargatzen du memorian. Ereduak ez du auto-ikaskuntzarik egiten, ezta sentsoreen higadura neurtzen denbora luzean zehar. Makina berriak sartzen badira edo funtzionamenduan aldaketak badaude, ereduaren zehaztasuna gutxitu egingo da.
+#### 8.2.4. **In-Memory datu-transformatzeak NiFi barruan:**
+   - NiFi-ko fluxuan JSON datuen transformazioak (`EvaluateJsonPath`, `JoltTransformJSON`) memoria asko kontsumitzen dute karga handiko ingurunetan. Prozesamendu banatua (adib. Apache Spark Streaming) egokiagoa litzateke segundoko milaka gertaera kudeatzeko.
+#### 8.2.5. **Single Node arkitektura:**
+   - Kafka, Elasticsearch eta NiFi nodo bakarrean exekutatzen dira (`single-node`). Ekoizpen-ingurune erreal batean, erredundantzia eta altuerako erabilgarritasuna (High Availability - HA) bermatzeko cluster anitzeko konfigurazioak behar dira.
+
 ### 8.3. Etorkizuneko lan-ildoak (MLOps, ereduaren birentrenamendua eta ezaugarri berriak)
+
+Sistemaren eboluzioa bultzatzeko eta industria-ingurune erreal baterako jauzia egiteko, honako etorkizuneko lan-ildoak proposatzen dira:
+
+#### 8.3.1. MLOps eta Birentrenamendu Automatizatua (Continuous Training)
+- **MLflow / DVC Integrazioa:** Ereduen bertsionamendua, esperimentuen jarraipena eta artefaktuen (`.pkl`) biltegiratze egituratua ezartzea.
+- **Drift Monitoring:** Sentsoreen datuen banaketa-aldaketak (*Data Drift*) eta ereduaren metrikak denboran zehar ikuskatzea (adib. Evidently AI bidez). Ereduaren errendimendua %75eko Recall-etik beherakoa bada, pipeline-ak birentrenamendu automatiko bat abiaraziko luke datu berriekin.
+- **CI/CD Pipeline prediktiboa:** GitHub Actions bidez, eredu berri bat entrenatzen denean automatikoki balidazio-probak igaro eta Scoring APIko Docker irudia berrabiaraztea (Blue-Green deployment bidez, zerbitzua gelditu gabe).
+
+#### 8.3.2. Ezaugarri eta Eredu Aurreratuagoak (Advanced AI)
+- **Denbora-serieen analisia (LSTM / Transformers):** Praka bakarreko neurketak aztertu ordez, azken 10 minutuetako sentsoreen seinaleen sekuentziak aztertzea (recurrent neural networks bidez), bibrazio-patroiak edo tenperatura-kurben aldatsak hobeto hautemateko.
+- **Survival Analysis (RUL - Remaining Useful Life):** Ez soilik "apurtuko den ala ez" esatea, baizik eta erremintari edo makinari zenbat minutu/ordu geratzen zaizkion estimatzea (*Remaining Useful Life* kalkulatzea regression bidez).
+
+#### 8.3.3. Azpiegituraren eta Komunikazioen Hobekuntza
+- **OPC-UA / MQTT sarrera:** Filebeat-en ordez, sentsore industrialen protokolo natiboak (OPC-UA / MQTT) Kafka Connect bidez zuzenean Kafkara bideratzea.
+- **Kubernetes (k8s) orkestrazioa:** Docker Compose ordezkatzea Kubernetes bidez, Scoring APIaren eta Kafka brokerren eskalamendu automatikoa (Auto-scaling) ahalbidetuz eskaera-bolumenaren arabera.
+- **Feedback Loop Interfazea (Human-in-the-Loop):** Kibanan edo mantentze-aplikazio baten bidez, teknikariek egindako ikuskapenen ondorioak (ea benetan matxura zegoen ala ez) sisteman atzera elikatzeko aukera ezartzea, etorkizuneko entrenamenduetan errore faltsuak zuzentzeko.
