@@ -907,6 +907,7 @@ plt.show()
 | False Positive (FP) | Hutsegitea iragarri da, baina ez da gertatzen. | Beharrezkoa ez den mantentze-lana edo ikuskapena eragin dezake. |
 | False Negative (FN) | Hutsegiterik ez dagoela iragarri da, baina hutsegitea gertatzen da. | Hutsegite bat garaiz ez detektatzeko arriskua dago. |
 | True Positive (TP) | Hutsegitea zuzen aurreikusi da. | Mantentze-lana aldez aurretik planifika daiteke. |
+
 Proiektu honetan, bereziki garrantzitsua da False Negative kopurua kontrolatzea, makina baten benetako hutsegitea garaiz ez detektatzeak ondorio ekonomiko larriak izan baititzake. Hala ere, False Positive kopuru handiegiak ere arazo operatiboak sor ditzake, beharrezkoak ez diren ikuskapenak eta mantentze-lanak eraginez.
 
 #### Kostu ekonomikoaren azterketa
