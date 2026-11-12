@@ -473,7 +473,7 @@ Jarraian, prozesu osoaren arkitektura, osagaiak eta konfigurazioak zehazten dira
 
 3. faseko fluxuaren lehen zatia hasierako ingestio-fluxuaren (*fase1_ingest.json*) kopia zehatza da. Helburua Kafkatik datu gordinak irakurri eta Elasticsearch-en gordetzea da.
 
-![1. Faseko Ingestio Fluxua](bidea/nifi_fase1_argazkia.png)
+![1. Faseko Ingestio Fluxua](images/Nifi/fase1_ingest.png)
 
 Urrats eta prozesadore hauek jarraitzen ditu:
 
@@ -486,7 +486,7 @@ Urrats eta prozesadore hauek jarraitzen ditu:
 
 Behin datu gordinak prozesatuta, fluxuak bide berri bat irekitzen du datu horiek denbora errealean Machine Learning API-ra bidaltzeko eta emaitzen arabera ekintzak burutzeko (*fase3_streaming.json*).
 
-![3. Faseko Streaming eta ML Fluxua](bidea/nifi_fase3_argazkia.png)
+![3. Faseko Streaming eta ML Fluxua](images/Nifi/fase3_streaming.png)
 
 Fase honetako prozesadore nagusiak lau multzotan banatzen dira:
 
@@ -1322,7 +1322,7 @@ Bide hauetako bakoitzean **`ReplaceText`** prozesadore bat dago, jatorrizko datu
 Dashboard:
 
 
-![alt text](images/DashboardGenerala.png)
+![alt text](images/Dashboards/DashboardGenerala.png)
 
 
 ### 7.1. Kibana Data View eta Index Pattern-en konfigurazioa
@@ -1331,7 +1331,7 @@ Dashboard:
 Data View:
 
 
-![alt text](images/Dataview.png)
+![alt text](images/Dashboards/Dataview.png)
 
 
 ### 7.2. Panela eta bistaratzeak (KPIak, line chart-ak, heatmap-ak eta gertaera-taulak)
@@ -1343,25 +1343,25 @@ KPIak eta Metrika Nagusiak
 Hutsegite-probabilitate maximoa (Gauge/Termometroa): Arrisku-maila maximoa adierazten du (berdea/horia/gorria).
 
 
-![alt text](images/Hutsegite-probabilitatemaximoa.png)
+![alt text](images/Dashboards/Hutsegite-probabilitatemaximoa.png)
 
 
 Akats Globalak: Instalazio osoko akatsen portzentaje orokorra.
 
 
-![alt text](images/AkatsGlobalak.png)
+![alt text](images/Dashboards/AkatsGlobalak.png)
 
 
 Aktibo dauden Makinak: Une honetan funtzionatzen eta datuak bidaltzen ari diren CNC makina kopurua.
 
 
-![alt text](images/AktiboDaudenmakinak.png)
+![alt text](images/Dashboards/AktiboDaudenmakinak.png)
 
 
 Tenperatura Media: Sentsore guztien batez besteko tenperatura orokorra.
 
 
-![alt text](images/TenperaturaMedia.png)
+![alt text](images/Dashboards/TenperaturaMedia.png)
 
 
 Line Chart-ak
@@ -1370,13 +1370,13 @@ Line Chart-ak
 Tenperatura Sensore Datuen Media: Sentsoreen tenperaturaren bilakaera orokorra (media eta mediana) adierazten du denboran zehar.
 
 
-![alt text](images/TenperaturaSensoreDatuenMedia.png)
+![alt text](images/Dashboards/TenperaturaSensoreDatuenMedia.png)
 
 
 Tenp bilakaera denboran zehar (makina bakoitzeko): Makina bakoitzaren tenperaturaren bilakaera indibiduala erakusten duen linea-grafiko anitza. Honen bidez, makina jakin baten berotze ez-ohikoak detektatzen dira.
 
 
-![alt text](images/TenpBilakaeraDenboranZehar(MakinaBakoitzeko).png)
+![alt text](images/Dashboards/TenpBilakaeraDenboranZehar(MakinaBakoitzeko).png)
 
 
 Heatmap-ak eta Desgaste Matrizea
@@ -1385,7 +1385,7 @@ Heatmap-ak eta Desgaste Matrizea
 Matxura Portzentaia: Makina bakoitzaren matxura edo desgaste portzentajea erakusten du kolore-eskala baten bidez. Gorri dauden makinek premiazko mantentzea behar dutela adierazten du.
 
 
-![alt text](images/MatxuraPortzentaia.png)
+![alt text](images/Dashboards/MatxuraPortzentaia.png)
 
 
 Gertaera-taulak
@@ -1394,7 +1394,7 @@ Gertaera-taulak
 Alerta Data: Azken alerten erregistro xehatua denbora errealeko taula batean (Makinak, Alerta lvl, Data). Horrela, teknikariek azken gertaera larriak auditatu ditzakete.
 
 
-![alt text](images/AlertaData.png)
+![alt text](images/Dashboards/AlertaData.png)
 
 
 Beste Bistaratze Batzuk
@@ -1403,19 +1403,19 @@ Beste Bistaratze Batzuk
 Makinak eta Alertak: Arazo gehien dituzten makinak zerrendatzen ditu, alerta motaren arabera desglosatuta (KONTUZ vs LARRIA).
 
 
-![alt text](images/MakinaketaAlertak.png)
+![alt text](images/Dashboards/MakinaketaAlertak.png)
 
 
 Akats Kopurua Motaren Arabera: Akats mota bakoitzaren maiztasuna erakusten du.
 
 
-![alt text](images/AkatsKopuruaMotarenArabera.png)
+![alt text](images/Dashboards/AkatsKopuruaMotarenArabera.png)
 
 
 Alerten Portzentaia: Sistemaren egoera orokorraren banaketa.
 
 
-![alt text](images/Donut.png)
+![alt text](images/Dashboards/Donut.png)
 
 
 ### 7.3. Denbora errealeko monitorizazioa eta sentsoreen jarraipena
