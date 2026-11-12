@@ -343,21 +343,23 @@ docker-compose.yml fitxategian, Filebeat zerbitzuari WSL2ko bide-izen partekatu 
 Filebeat-ek sarrerako .csv fitxategi berriak detektatu eta Kafkako cnc-stream topikora bideratzeko konfigurazioa:
 
 ```YAML
+# 1. SARRERA: irakaslearen karpetako CSVak
 filebeat.inputs:
   - type: filestream
     id: cnc-stream
     paths:
       - /mnt/cnc-stream/*.csv
-
-    # CSV fitxategien goiburuko izenak iragazi (ez bidali mezu gisa)
-    exclude_lines: ['^machine_id,']
-
+    exclude_lines: ['^timestamp']
+    prospector.scanner.exclude_files: ['_00005\.csv$']
+    prospector.scanner.fingerprint.enabled: false
+    file_identity.path: ~
+    close.on_state_change.inactive: 1m
+# 2. IRTEERA: Kafka
 output.kafka:
-  hosts: ["kafka:29092"]
-  topic: "cnc-stream"
+  hosts: ["kafka:9092"]
+  topic: "cnc-sensors-raw"
   codec.format:
     string: '%{[message]}'
-
 logging.level: info
 logging.to_files: false
 ```
@@ -437,7 +439,7 @@ Proiektu honetan, Apache Kafka datuen ingestio-fluxuaren ardatz nagusia edo *bro
 Datuen jarioa honela egituratzen da Kafkaren inguruan:
 
 - **Datuen sarrera (Filebeat):** Filebeat tresna konfiguratuta dago sentsoreen CSV datuak irakurri eta Kafkako `cnc-sensors-raw` izeneko *topic*-era bidaltzeko.
-- **Datuen irteera (NiFi):** Apache NiFi-k `ConsumeKafka` prozesadorea erabiltzen du *topic* horretatik datuak irakurtzeko. Irakurketa hau `cnc-nifi` izeneko kontsumitzaile-taldearen (Group ID) bidez egiten da, mezuak behin bakarrik eta modu ordenatuan prozesatzen direla bermatzeko.
+- **Datuen irteera (NiFi):** Apache NiFi-k `ConsumeKafka` prozesadorea erabiltzen du topic horretatik datuak irakurtzeko. Irakurketa `cnc-nifi` kontsumitzaile-taldearen (*Group ID*) bidez egiten da. Kontsumitzaile-taldeak mezuen kontsumoa koordinatzen du eta irakurritako offset-ak kudeatzen ditu. Kafka-k mezuen ordena partizio bakoitzaren barruan mantentzen du; beraz, partizio desberdinetako mezuen arteko ordena globala ez dago bermatuta.
 
 #### Topic-aren sorrera
 
@@ -941,6 +943,9 @@ Batezbestekoak ereduak bost iterazioetan lortutako errendimendu orokorra adieraz
 Emaitzek Random Forest ereduaren portaera egonkorra eta hutsegiteak identifikatzeko gaitasun ona erakusten dute. Bereziki, ROC-AUC balio altuak ereduak hutsegiteak eta hutsegiterik gabeko kasuak bereizteko gaitasun ona duela adierazten du.
 
 Balidazio gurutzatua entrenamendu-multzoan egin da; azken ebaluaziorako, aldiz, aurrez bereizitako balidazio-multzoa erabili da.
+
+**Atalaseari buruzko oharra:** Balidazio gurutzatuko `Precision`, `Recall` eta `F1-score` metrikak sailkatzailearen ohiko `predict()` metodoaren bidez kalkulatu dira, hau da, 0,50eko atalase lehenetsia erabiliz. `ROC-AUC` metrika, berriz, probabilitateetan oinarritzen da eta ez dago erabaki-atalase bakar bati lotuta. Ondorengo ataletan, ereduaren errendimendua 0,40ko atalase operatiboarekin ere ebaluatu da.
+
 ### 4.5. Ereduen arteko konparazioa eta metrikak (Precision, Recall, F1, ROC-AUC)
 Hiru estrategien errendimendua baldintza berdinetan alderatzeko, Random Forest, XGBoost eta Random Forest + SMOTE ereduak ebaluatu dira balidazio-multzo berarekin.
 
@@ -980,7 +985,7 @@ Lortutako emaitzak:
 | **Eredua** | **Precision** | **Recall** | **F1-score** | **ROC-AUC** |
 |---|---:|---:|---:|---:|
 | Random Forest | 0,8148 | 0,8148 | 0,8148 | 0,9792 |
-| ROC-XGBoost | 0,5946 |0,8148 | 0,6875 | 0,9682 |
+| XGBoost | 0,5946 |0,8148 | 0,6875 | 0,9682 |
 | Random Forest + SMOTE | 0,6027 | 0,8148 | 0,6929 | 0,9696 |
 
 Emaitzak interpretatzeko, metrika bakoitzak zer neurtzen duen kontuan hartu behar da:
@@ -1038,6 +1043,11 @@ Proiektu honetan, bereziki garrantzitsua da False Negative kopurua kontrolatzea,
 
 Atalase desberdinak alderatzean, errore mota bakoitzari lotutako kostu ekonomikoa ere hartu da kontuan. Horretarako, positibo faltsuek eragindako alferrikako ikuskapenen kostua eta negatibo faltsuek eragindako hutsegiteen kostua bereizi dira.
 
+Kostu ekonomikoa kalkulatzeko, positibo faltsuei (FP) eta negatibo faltsuei (FN) kostu estimatu bana esleitu zaie. Kalkulu horren helburua atalase desberdinek izan dezaketen eragin ekonomikoa alderatzea da. Erabilitako kostuak simulazio edo estimazio gisa hartu behar dira, eta ez enpresaren benetako kostu egiaztatu gisa.
+Kostu horiek erabiliz, atalase bakoitzaren kostu ekonomiko estimatua honako formula honen bidez kalkulatu da:
+
+Kostu osoa = (FN × 5.000 €) + (FP × 200 €) + (TP × 300 €) + (TN × 0 €)
+
 Balidazio-multzoan lortutako emaitzen arabera:
 
 - 0,30eko atalasea: 26 positibo faltsu eta 9 negatibo faltsu. Kostu ekonomiko estimatua: 63.700 €.
@@ -1086,7 +1096,7 @@ Azken konparazioan, Random Forest ereduak 0,40ko atalasearekin 0,8148ko Precisio
 
 Horrenbestez, 0,40ko atalasea aukeratu da CNC Guard sistemaren erabilera operatiborako, hutsegiteak detektatzeko gaitasuna eta alarma faltsuen kontrola orekatzeko. Atalasea ez da balio unibertsal edo behin betikotzat hartu behar: benetako ekoizpen-ingurunean, mantentze-kostuak, geldialdien kostu ekonomikoa eta sistemaren benetako portaera kontuan hartuta berrikusi beharko litzateke.
 ### 4.7. Ezaugarrien garrantzia (Feature Importance) eta ereduaren biltegiratzea (`.pkl`)
-Random Forest eredua aukeratu ondoren, ereduak hutsegiteak aurreikusteko gehien erabiltzen dituen ezaugarriak aztertu dira. Horretarako, `feature_importances_` atributua erabili da.
+Random Forest eredua aukeratu ondoren, ereduaren barneko banaketetan ezaugarri bakoitzak duen garrantzi erlatiboa aztertu da. Horretarako, `feature_importances_` atributua erabili da. Balio horiek ereduak sailkapenean ezaugarriak nola erabiltzen dituen aztertzeko balio dute, baina ez dute kausalitate-harremanik frogatzen.
 
 Atributu horrek entrenatutako ereduaren erabakietan ezaugarri bakoitzak duen garrantzi erlatiboa adierazten du. Horrela, sentsoreen jatorrizko neurketek eta sortutako ezaugarri eratorriek ereduaren iragarpenetan duten eragina azter daiteke.
 
@@ -1193,7 +1203,7 @@ Ereduak `predict_proba()` bidez hutsegite bat gertatzeko *probabilitatea* itzult
 - **Alerta-mailak (`alert_level`):** Erakundeko komunikazioa (Telegram bidezkoa) kudeatzeko, probabilitatearen arabera hiru maila semaforiko sortu dira:
   - **OK:** prob < 0.40. Funtzionamendu normala.
   - **KONTUZ:** 0.40 <= prob <= 0.80. Berrikuspen programatua behar da.
-  - **LARRIA:** prob > 0.80. Makinaren berehalako gelditzea eta ikuskapen kritikoa gomendatzen da.
+  - **LARRIA:** prob > 0.80. Arrisku-maila oso altua adierazten du. Makinaren berehalako ikuskapen teknikoa eta egoeraren ebaluazioa gomendatzen dira. Makinaren geldiarazteari buruzko azken erabakia arduradun teknikoek hartu behar dute, makinaren benetako egoera eta segurtasun-prozedurak kontuan hartuta.
 
 ### 5.5. APIaren autentifikazioa eta segurtasuna (`X-API-Key`)
 #### Segurtasun Logikoa (X-API-Key)
@@ -1287,7 +1297,7 @@ Eredu prediktiboarekin integratzeko, NiFi-k eskaerak egiten dizkio FastAPI bidez
 
 ### 6.4. Aurreikuspenen bideratze dinamikoa eta indize anitzeko biltegiratzea Elasticsearch-en
 
-APIak itzulitako alerta-mailaren arabera, fluxuak erabaki dinamikoak hartzen ditu **`RouteOnAttribute`** prozesadore zentrala erabiliz. Lau norabide edo erlazio ezberdin definitu dira:
+APIak itzulitako alerta-mailaren arabera, fluxuak hainbat adar erabiltzen ditu `RouteOnAttribute` prozesadorearen bidez. Horien bidez, aurreikuspenak alerta-mailaren arabera bideratzen dira, eta datu eraldatuak beste adar paralelo batean gordetzen dira.:
 
 - **`prediccion_ok`:** `alert_level` atributua 'OK' denean eta 200 HTTP kodea jaso denean aktibatzen da. Datuak `PutElasticsearchJson OK` prozesadorera doaz, `cnc-prediction2` indizean gordez.
 - **`fallo_maquina`:** Alerta-maila 'OK' EZ denean aktibatzen da. Datuak `PutElasticsearchJson FALLOS` prozesadorera bideratzen dira eta `cnc-error2` indize espezifikoan biltegiratzen dira, erroreak modu azkarrean kontsultatu ahal izateko.
@@ -1411,13 +1421,13 @@ Alerten Portzentaia: Sistemaren egoera orokorraren banaketa.
 ### 7.3. Denbora errealeko monitorizazioa eta sentsoreen jarraipena
 
 
-Anomalien Detekzio Azkarra: Sentsoreen tenperatura-lineetan gailur neurgarri bat gertatzen denean (adibidez, 50-60°C arteko igoera azkarra), sistema automatikoki ikus daiteke kaltetutako CNC makinan.
+Anomalien Detekzio Azkarra: Sentsoreen tenperatura-bilakaeran ohiko portaeratik aldentzen diren igoerak identifikatzeak makina jakin baten egoera aztertzen laguntzen du. Kibana-ko denbora-serieen bidez, teknikariek aldaketa horiek ikus ditzakete eta beharrezko ikuskapena lehenetsi.
 
 
 Mantenimendu Prediktiboa eta Priorizazioa: Matxura Portzentaia eta Makinak eta Alertak grafikoen bidez, teknikari bati lehentasuna ematen zaio zein makinari egin behar dion ikuskapena matxura larriago bat gertatu aurretik.
 
 
-Causa-Raíz Analisia: Alerta jakin bat klikatzean (iragazki dinamikoen bidez), panel osoa egokitzen da makina horren tenperatura eta akatsen historiala soilik erakusteko, porrotaren jatorria identifikatzen lagunduz.
+Causa-Raíz Analisia: Alerta jakin bat hautatzean, iragazki dinamikoen bidez panel osoa makina horren tenperatura eta hutsegiteen historiala erakusteko egokitzen da. Horrek gertaeraren testuingurua aztertzen eta hutsegitearekin lotutako faktore posibleak identifikatzen laguntzen du, baina ez du berez kausalitatea frogatzen.
 
 ## 8. ONDORIOAK ETA ETORKIZUNEKO HOBEKUNTZAK
 
@@ -1428,7 +1438,7 @@ CNC Guard proiektuak arrakastaz inplementatu du industria 4.0 ingurunera biderat
 Lortutako lorpen nagusiak honako hauetan laburtzen dira:
 
 #### 8.1.1. **Azpiegitura edukiontziratu sendoa eta isolatua:**
-Docker eta Docker Compose bidez, 7 zerbitzu autonomo (Kafka, Filebeat, NiFi, Elasticsearch, Kibana, Scoring API eta azpiegitura laguntzailea) modu errepikagarrian hedatzea lortu da.
+Docker eta Docker Compose bidez, 6 zerbitzu autonomo (Kafka, Filebeat, NiFi, Elasticsearch, Kibana eta Scoring API) modu errepikagarrian hedatzea lortu da.
 #### 8.1.2. **Denbora errealeko ingesta malgua (Streaming):**
 Windows-eko `N:` sare-unitate partekatu bidez CIFS/drvfs bidezko muntaketa eginez, Filebeat eta Kafkaren bidez 30 segundoro sartzen diren `.csv` sentsore-datuak inolako datu-galerarik gabe prozesatzea lortu da.
 #### 8.1.3. **Machine Learning eredu eraginkorra eta optimizatua:**
