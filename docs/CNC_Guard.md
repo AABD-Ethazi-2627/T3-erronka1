@@ -1210,7 +1210,7 @@ API-ak informazio industriala jasotzen duenez, ez da publikoa izan behar. Segurt
 Sistema prediktibo industrial batek hainbat arau eta praktika on bete behar ditu AAren inplementazio seguru baterako:
 
 1. **Security by Design (Diseinuzko Segurtasuna):**
-   * *Data Validation (Poisoning ekiditea):* Pydantic-ek ezarritako mugek (adibidez, RPM 10000tik behera) ekiditen dute "Data Poisoning" edo sarrera gaiztoen erasoak, non erasotzaile batek datu izugarri handiak bidaliko lituzkeen eredua zoratu edo ukapen-zerbitzu (DoS) bat eragiteko.
+   * *Data Validation (Sarrerako datuen balidazioa):* Pydantic bidez ezarritako balidazioek APIra iristen diren datuen egitura, mota eta balio-tarteak egiaztatzen dituzte. Adibidez, RPM balioak ezarritako mugen barruan daudela kontrolatzen da, datu baliogabeak edo espero ez diren formatuak eredura iritsi ez daitezen. Neurri horrek *Garbage In, Garbage Out* arazoa murrizten laguntzen du. Hala ere, balidazio horiek ez dute berez *Data Poisoning* erasoen aurkako babes osoa bermatzen, ezta eskaera kopuru handiegiek eragin ditzaketen DoS erasoak saihesten ere; horretarako, beste segurtasun-neurri batzuk beharko lirateke, hala nola eskaera-mugak (*rate limiting*) eta sarbide-kontrol egokiak.
    * *Ereduaren Karga Segurua:* `.pkl` (pickle) fitxategiak desestaltzea arriskutsua izan daiteke kode arbitrarioa exekuta dezaketelako. Hori ekiditeko, eredua bide lokal eta isolatu batetik soilik kargatzen da (`MODEL_PATH`), eta kanpoko inork ezin du modeloa gainidatzi Docker irudiaren baimenik gabe.
 
 2. **Marko Legala eta Gardentasuna (AI Act / GDPR):**
