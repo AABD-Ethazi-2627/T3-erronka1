@@ -648,18 +648,11 @@ Sortutako hiru ezaugarriak honako hauek dira:
 | `temp_diff` | `process_temp_K - air_temp_K` | Prozesuko eta giroko tenperaturen arteko diferentzia neurtzea, beroketa-maila aztertzeko. |
 | `torque_wear` | `torque_Nm * tool_wear_min` | Momentuaren eta erremintaren higaduraren arteko elkarrekintza adieraztea, higadurak lan-kargarekin duen erlazioa aztertzeko. |
 
-power ezaugarriak makinaren biraketa-abiadura eta momentua batera kontuan hartzen ditu. temp_diff aldagaiak, berriz, prozesuko tenperaturaren igoera giro-tenperaturarekiko neurtzen du. Azkenik, torque_wear ezaugarriak erremintaren higadura eta momentu mekanikoa konbinatzen ditu, bi faktore horiek batera agertzen direnean sor daitekeen arriskua ereduak ikas dezan.
-
 Ezaugarri eratorri horien helburua ez da jatorrizko sentsore-neurketak ordezkatzea, baizik eta haien arteko erlazioak adieraztea eta ereduari informazio prediktibo gehigarria eskaintzea.
 
-- **`power`:** biraketa-abiadura (`rpm`) eta momentua (`torque_Nm`) batera aztertzen ditu. Horrela, makinaren lan-intentsitatearen adierazle bat lortzen da, bi neurketak banaka aztertzeaz gain.
-- **`temp_diff`:** prozesuko tenperaturaren eta giro-tenperaturaren arteko aldea adierazten du. Aldagai horri esker, ereduak bi tenperaturen arteko erlazioa azter dezake, eta ez soilik bakoitzaren balio absolutua.
-- **`torque_wear`:** momentua eta erremintaren erabilera-denbora batera erlazionatzen ditu. Horrela, ereduak lan-kargaren eta erremintaren higaduraren arteko elkarrekintza ikas dezake.
+Ezaugarri horiek domeinu-ezagutzan oinarrituta sortu dira. Hala ere, haien erabilgarritasuna ereduaren ebaluazioaren bidez egiaztatu behar da, ezaugarri berriak gehitzeak ez baitu berez errendimendua hobetzea bermatzen.
 
-Ezaugarri horiek domeinu-ezagutzan oinarrituta sortu dira, makinen portaera hobeto deskribatzeko. Hala ere, ezaugarri eratorri bat sortzeak ez du berez bermatzen ereduaren errendimendua hobetuko denik; horregatik, entrenamenduaren eta ebaluazioaren bidez aztertu behar da haien ekarpena.
-
-**Oharra:** `power` aldagaia `rpm * torque_Nm` biderketaren bidez kalkulatzen denez, potentziaren adierazle proportzionala da, eta ez potentzia fisikoaren neurketa zehatza wattetan.
-Aurreprozesatze-fase honen amaieran, datu-multzoak jatorrizko sentsore-ezaugarriak, machine_type aldagaiaren kodifikazioa eta sortutako hiru ezaugarri eratorriak ditu. Horiek erabiliko dira ondorengo entrenamendu- eta ebaluazio-faseetan.
+**Oharra:** `power` aldagaia `rpm * torque_Nm` kalkulua potentziaren adierazle proportzional gisa erabiltzen da. Ez da potentzia fisikoaren neurketa zuzena wattetan (W).
 
 ## 4. MACHINE LEARNING EREDUAREN ENTRENAMENDUA ETA EBALUAZIOA
 
