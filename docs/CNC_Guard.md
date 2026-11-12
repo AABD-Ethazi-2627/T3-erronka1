@@ -340,7 +340,7 @@ docker-compose.yml fitxategian, Filebeat zerbitzuari WSL2ko bide-izen partekatu 
 
 #### Filebeat ingesta konfigurazioa (filebeat.yml)
 
-Filebeat-ek sarrerako .csv fitxategi berriak detektatu eta Kafkako cnc-stream topikora bideratzeko konfigurazioa:
+Filebeat-ek sarrerako .csv fitxategi berriak detektatu eta Kafkako cnc-sensors-raw topikora bideratzeko konfigurazioa:
 
 ```YAML
 # 1. SARRERA: irakaslearen karpetako CSVak
