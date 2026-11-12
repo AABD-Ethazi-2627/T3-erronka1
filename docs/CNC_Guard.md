@@ -58,20 +58,79 @@ Horretarako, datuak CSV fitxategietatik hartu eta Filebeat, Kafka eta NiFi erabi
 
 Proiektuaren esparru teknikoak honako osagai hauek biltzen ditu: Docker bidezko azpiegitura edukiontziratua, datu-ingestioa eta streaming-a, datuen aurreprozesatzea, ML ereduaren entrenamendua, FastAPI bidezko inferentzia-zerbitzua, Elasticsearch eta Kibana bidezko monitorizazioa, eta alerta automatizatuak.
 
+### 1.1.1. Adimen artifizialaren eta ikaskuntza automatikoaren oinarriak
+
+CNC Guard proiektua ulertzeko, beharrezkoa da Adimen Artifizialaren (AA) eta Ikaskuntza Automatikoaren (*Machine Learning*) arteko harremana eta bakoitzaren ezaugarriak bereiztea.
+
+**Adimen Artifiziala (AA)** makinek gizakiaren adimenarekin lotutako atazak egiteko duten gaitasuna garatzen duen informatika-arloa da. Besteak beste, informazioa aztertzea, patroiak identifikatzea, erabakiak hartzea eta arazoak ebaztea bilatzen du.
+
+Adimen Artifizialaren barruan bi kontzeptu nagusi bereizten dira:
+
+- **Adimen Artifizial ahula (Narrow AI):** ataza edo arazo zehatz bat ebazteko diseinatutako sistemak dira. Ez dute gizakiaren adimen orokorrik, baizik eta aurrez definitutako esparru batean jarduteko gaitasuna. CNC Guard sistema mota honen barruan kokatzen da, bere helburu bakarra CNC makinen hutsegiteak aurreikustea baita.
+
+- **Adimen Artifizial indartsua (Strong AI / AGI):** edozein arlotan gizakiaren antzeko arrazoiketa, ikaskuntza eta arazoak ebazteko gaitasun orokorra izango lukeen adimen artifiziala da. Ez litzateke ataza bakar batera mugatuko, eta ezagutza arlo desberdinetara transferitzeko gai izango litzateke. CNC Guard ez da mota honetako sistema bat.
+
+#### Adimen Artifiziala eta Machine Learning arteko harremana
+
+*Machine Learning* Adimen Artifizialaren azpiarlo bat da. Bere helburua da ordenagailuek datuetatik abiatuta ereduak eta patroiak ikastea, arau guztiak eskuz programatu behar izan gabe.
+
+Bi kontzeptuen arteko desberdintasun nagusia honako hau da:
+
+- **Adimen Artifiziala:** sistema adimendunak garatzeko arlo orokorra da. Arauetan, logikan edo ikaskuntza automatikoan oinarritutako teknikak erabil ditzake.
+- **Machine Learning:** datuetatik ikasten duten algoritmoak erabiltzen dituen AAren azpimultzoa da. Ereduak entrenamendu-datuetan aurkitutako erlazioak erabiltzen ditu aurrez ikusi gabeko egoerei buruzko iragarpenak egiteko.
+
+Adibidez, mantentze-lan tradizional batean, makina baten tenperatura 80 °C-tik gorakoa bada alerta bat sortzeko arau finko bat programatu daiteke. CNC Guard sisteman, aldiz, Machine Learning eredua sentsoreen hainbat parametro aztertzen entrenatzen da, haien arteko erlazioak ikasiz eta hutsegite baten probabilitatea kalkulatuz.
+
+#### Ikaskuntza automatikoko sistema motak
+
+Machine Learning sistemak erabiltzen duten ikaskuntza-motaren arabera sailka daitezke:
+
+| Ikaskuntza mota | Ezaugarriak | Industria-aplikazioak |
+|---|---|---|
+| **Gainbegiratua (Supervised Learning)** | Etiketatutako datuekin entrenatzen da. Sarrerako datuak eta dagozkien emaitza zuzenak erabiltzen ditu ereduak ikasteko. | Makinen hutsegiteen sailkapena, kalitate-kontrola eta matxuren aurreikuspena. |
+| **Gainbegiratu gabea (Unsupervised Learning)** | Etiketarik gabeko datuak aztertzen ditu, haien barruan dauden patroiak, taldeak edo anomaliak identifikatzeko. | Portaera anormalen detekzioa, makinen multzokatzea eta sentsoreen patroi ezezagunen identifikazioa. |
+| **Errefortzuzko ikaskuntza (Reinforcement Learning)** | Agente batek ingurunearekin elkarreragiten du, ekintzak eginez eta sari edo zigorren bidez bere portaera optimizatuz. | Makinen funtzionamendu-parametroen optimizazioa eta ekoizpen-prozesuen kontrola. |
+
+CNC Guard proiektuan **ikaskuntza gainbegiratua** aukeratu da, erabilitako AI4I 2020 datasetak historikoki etiketatutako erregistroak dituelako. `machine_failure` aldagaiak makina bakoitzak hutsegiterik izan duen adierazten du (`0` edo `1`).
+
+Horrela, ereduak sentsoreen neurketen eta benetako hutsegiteen arteko erlazioak ikasten ditu. Entrenamendu horren ondoren, datu berriak jasotzen dituenean, hutsegitea gertatzeko probabilitatea kalkula dezake.
+
+Gainbegiratu gabeko ikaskuntza erabilgarria izan liteke etorkizunean aurrez etiketatu gabeko anomaliak identifikatzeko, eta errefortzuzko ikaskuntza, berriz, mantentze-estrategiak edo makinaren funtzionamendua optimizatzeko. Hala ere, bi ikuspegi horiek ez dira proiektu honen egungo inplementazioaren parte.
+
+#### 1.1.2. Entrenamendu offlinea eta inferentzia denbora errealean
+
+CNC Guard sistemak bi fase nagusi bereizten ditu Machine Learning ereduaren bizi-zikloan:
+
+- **Entrenamendu offlinea:** lehenengo fasean, AI4I 2020 dataseteko datu historiko etiketatuak erabiltzen dira Random Forest eredua entrenatzeko eta ebaluatzeko. Prozesu honetan, ereduak sentsoreen neurketen eta makinen hutsegiteen arteko ereduak ikasten ditu. Entrenamendua eta ebaluazioa amaitutakoan, eredua `cnc_failure_model.pkl` fitxategian gordetzen da.
+
+- **Inferentzia denbora errealean:** bigarren fasean, aurrez entrenatutako eredua Scoring API zerbitzuan kargatzen da. Kafka eta NiFi bidez jasotako sentsoreen datu berriak APIra bidaltzen dira, eta ereduak hutsegitea gertatzeko probabilitatea kalkulatzen du. Emaitzaren arabera, sistemak alerta-maila esleitzen du eta informazioa Elasticsearch-en eta Kibana-n eskuragarri jartzen du.
+
+Bereizketa horri esker, ez da eredua berriro entrenatu behar datu berri bakoitza jasotzen den bakoitzean. Entrenamendua prozesu bereizia da, eta denbora errealeko sistemak dagoeneko entrenatutako eredua erabiltzen du predikzioak egiteko. Beraz, egungo inplementazioak ez du online learning edo etengabeko birentrenamendurik egiten.
+
+**Automatizazio-mailari dagokionez**, CNC Guard erabakiak hartzen laguntzeko sistema da, ez CNC makinak modu autonomoan kontrolatzeko sistema. Tresnak arrisku-seinaleak eta alertak sortzen ditu, baina mantentze-lanetako teknikariek aztertzen dituzte emaitzak eta azken erabakia hartzen dute.
+
 ### 1.2. Arkitektura globalaren diagrama eta datu-fluxua
 Atal honetan proiektuaren funtzionamendu orokorra eta informazioaren ibilbidea azaltzen dira.
 
-Jarraian agertzen den diagramak (Mermaid bidez diseinatua) sistemaren osagai nagusiak, haien arteko elkarrekintzak eta datu-fluxua modu bisual eta argian erakusten ditu. Irudikapen honi esker, sistemaren prozesu osoa –hasierako interakziotik hasi eta amaierako emaitzara arte– errazago ulertu ahal izango da.
 ```mermaid
 flowchart LR
-    A["Simuladorea (CSV)"] -->|Samba / NFS| B["Filebeat"]
+     A["Simuladorea (CSV)"] -->|CIFS| B["Filebeat"]
     B -->|cnc-sensors-raw| C["Apache Kafka"]
     C --> D["Apache NiFi"]
-    D -->|Datu gordinak| E[("Elasticsearch")]
-    D -->|Sentsoreak /predict| F["Scoring API (FastAPI)"]
-    F -->|Probabilitatea & Alerta| D
-    D -->|cnc-alerts / cnc-normal| E
-    E --> G["Kibana Dashboards"]
+
+    D -->|Datu gordinak| E[("Elasticsearch: cnc-sensors")]
+    D -->|Sentsoreen datuak /predict| F["Scoring API (FastAPI)"]
+    F -->|Hutsegite-probabilitatea eta alerta-maila| D
+
+    D -->|Datu eraldatuak| G[("Elasticsearch: cnc-silver")]
+    D -->|Alerta OK| H[("Elasticsearch: cnc-prediction2")]
+    D -->|Hutsegitea / alerta| I[("Elasticsearch: cnc-error2")]
+
+    D -->|KONTUZ / LARRIA| J["Telegram"]
+    E --> K["Kibana"]
+    G --> K
+    H --> K
+    I --> K
 ```
 
 ### 1.3. Azpiegitura edukiontziratua (Docker eta Docker Compose)
@@ -591,9 +650,17 @@ Sortutako hiru ezaugarriak honako hauek dira:
 
 power ezaugarriak makinaren biraketa-abiadura eta momentua batera kontuan hartzen ditu. temp_diff aldagaiak, berriz, prozesuko tenperaturaren igoera giro-tenperaturarekiko neurtzen du. Azkenik, torque_wear ezaugarriak erremintaren higadura eta momentu mekanikoa konbinatzen ditu, bi faktore horiek batera agertzen direnean sor daitekeen arriskua ereduak ikas dezan.
 
-Ezaugarri eratorri horiek ez dute hutsegitea zuzenean adierazten; sentsoreen neurketetatik kalkulatutako aldagaiak dira. Haien helburua ereduari makinaren egoera fisikoa hobeto deskribatzen duten erlazioak eskaintzea da.
+Ezaugarri eratorri horien helburua ez da jatorrizko sentsore-neurketak ordezkatzea, baizik eta haien arteko erlazioak adieraztea eta ereduari informazio prediktibo gehigarria eskaintzea.
 
+- **`power`:** biraketa-abiadura (`rpm`) eta momentua (`torque_Nm`) batera aztertzen ditu. Horrela, makinaren lan-intentsitatearen adierazle bat lortzen da, bi neurketak banaka aztertzeaz gain.
+- **`temp_diff`:** prozesuko tenperaturaren eta giro-tenperaturaren arteko aldea adierazten du. Aldagai horri esker, ereduak bi tenperaturen arteko erlazioa azter dezake, eta ez soilik bakoitzaren balio absolutua.
+- **`torque_wear`:** momentua eta erremintaren erabilera-denbora batera erlazionatzen ditu. Horrela, ereduak lan-kargaren eta erremintaren higaduraren arteko elkarrekintza ikas dezake.
+
+Ezaugarri horiek domeinu-ezagutzan oinarrituta sortu dira, makinen portaera hobeto deskribatzeko. Hala ere, ezaugarri eratorri bat sortzeak ez du berez bermatzen ereduaren errendimendua hobetuko denik; horregatik, entrenamenduaren eta ebaluazioaren bidez aztertu behar da haien ekarpena.
+
+**Oharra:** `power` aldagaia `rpm * torque_Nm` biderketaren bidez kalkulatzen denez, potentziaren adierazle proportzionala da, eta ez potentzia fisikoaren neurketa zehatza wattetan.
 Aurreprozesatze-fase honen amaieran, datu-multzoak jatorrizko sentsore-ezaugarriak, machine_type aldagaiaren kodifikazioa eta sortutako hiru ezaugarri eratorriak ditu. Horiek erabiliko dira ondorengo entrenamendu- eta ebaluazio-faseetan.
+
 ## 4. MACHINE LEARNING EREDUAREN ENTRENAMENDUA ETA EBALUAZIOA
 
 ### 4.1. Entrenamendu- eta balidazio-multzoen banaketa estrategikoa
@@ -703,9 +770,73 @@ smote_results = cross_validate(
 SMOTE pipeline baten barruan integratzea erabaki garrantzitsua da. Horrela, balidazio gurutzatuan lagin sintetikoak entrenamendurako erabiltzen diren zatietan bakarrik sortzen dira. Balidazio-zatiak jatorrizko datuekin mantentzen dira, datu-ihesa saihesteko eta ebaluazio fidagarriagoa lortzeko.
 
 Bi estrategiak alderatuz, class_weight aukerak jatorrizko datuen egitura mantentzen du; SMOTE estrategiak, berriz, gutxiengo-klasearen ordezkaritza handitzen du lagin sintetikoen bidez. Horregatik, bi ikuspegiak aztertu dira, hutsegiteen detekzioan zein den eraginkorragoa zehazteko.
+#### Bi estrategien arteko aukeraketa eta justifikazioa
+
+Bi estrategiak probatu ondoren, azken sistemarako `class_weight="balanced"` konfigurazioa duen Random Forest eredua aukeratu da, balidazio-multzoan emaitza hobeak lortu dituelako.
+
+Bi estrategien arteko konparazioa egiteko, eredu bakoitza balidazio-multzo berarekin ebaluatu da, eta biei 0,40ko erabaki-atalase bera aplikatu zaie. Horrela, emaitzak baldintza berdinetan alderatu ahal izan dira.
+
+Emaitzek honako hau erakusten dute:
+
+| Metrika | Random Forest (`class_weight`) | Random Forest + SMOTE |
+|---|---:|---:|
+| Precision | 0,8148 | 0,6027 |
+| Recall | 0,8148 | 0,8148 |
+| F1-score | 0,8148 | 0,6929 |
+| ROC-AUC | 0,9792 | 0,9696 |
+
+Emaitzak aztertuta, bi ereduek Recall balio bera lortu dute (0,8148). Horrek esan nahi du bi estrategiek benetako hutsegiteen %81,48 detektatu dituztela. Hala ere, Precision metrikak alde nabarmena erakusten du: `class_weight` erabiliz, hutsegite gisa iragarritako kasuen %81,48 benetako hutsegiteak dira; SMOTE erabiliz, berriz, %60,27 baino ez.
+
+Horrek esan nahi du SMOTE bidezko ereduak alarma faltsu gehiago sortzen dituela, benetako hutsegite kopuru bera detektatuta. CNC Guard sisteman, alarma faltsuek mantentze-lanen alferrikako egiaztapenak eta baliabideen erabilera gehigarria eragin ditzakete. Bestalde, benetako hutsegite bat detektatu gabe uzteak geldialdi operatiboak eta kostu ekonomikoak sor ditzake.
+
+Beraz, bi estrategien artean `class_weight="balanced"` aukeratu da, hutsegiteak detektatzeko gaitasuna mantentzen duelako eta, aldi berean, alarma faltsu gutxiago sortzen dituelako. Gainera, estrategia horrek jatorrizko datuen banaketa mantentzen du, lagin sintetikoak sortu gabe.
+
+Horrenbestez, SMOTE ez da baztertu emaitza txarrak dituen teknika delako, baizik eta egindako esperimentuan ez duelako azken sistemarako `class_weight` estrategiak baino emaitza hoberik eskaini. Azken erabakia proiektuaren helburu operatiboarekin eta balidazio-emaitzekin bat dator.
 
 ### 4.3. Algoritmoen entrenamendua: Random Forest vs XGBoost
 Hutsegiteak aurreikusteko bi algoritmo nagusi aztertu dira: Random Forest eta XGBoost. Horrez gain, Random Forest eta SMOTE konbinatzen dituen hirugarren estrategia ere ebaluatu da.
+
+#### Algoritmoak aukeratzeko irizpideak
+
+CNC Guard proiektuan sailkapen-problema bat ebatzi behar da: sentsoreen neurketak aztertuta, makina batek hutsegiterik izango duen edo ez aurreikustea. Horretarako, ikaskuntza gainbegiratuko sailkapen-algoritmoak aztertu dira, helburu-aldagaiak (`machine_failure`) bi klase baititu: `0` (hutsegiterik ez) eta `1` (hutsegitea).
+
+Algoritmo bat aukeratzerakoan, ez da kontuan hartu soilik sailkapenaren zehaztasuna. Beste alderdi hauek ere hartu dira kontuan:
+
+- **Datuen portaera:** sentsoreen aldagaien arteko erlazioak konplexuak izan daitezke, eta ez dute zertan linealak izan.
+- **Klase-desoreka:** hutsegiteak erregistro guztien %3,4 inguru baino ez dira; beraz, gutxiengo-klasea behar bezala identifikatzeko gaitasuna garrantzitsua da.
+- **Hutsegiteen detekzioa:** bereziki garrantzitsua da Recall metrika, benetako hutsegiteak detektatu gabe uzteak ondorio ekonomikoak eta operatiboak izan baititzake.
+- **Ereduaren erabilgarritasuna:** entrenatutako eredua FastAPI bidezko inferentzia-zerbitzuan integratu behar da, denbora errealeko datuak sailkatzeko.
+
+##### Sailkapen-algoritmoen familia nagusiak
+
+Sailkapen-problemak ebazteko hainbat algoritmo-familia erabil daitezke:
+
+| Algoritmo mota | Funtzionamendua | CNC Guard proiektuan |
+|---|---|---|
+| Metodo linealak (adibidez, Logistic Regression) | Ezaugarrien eta helburu-aldagaiaren arteko erlazio lineala modelatzen dute, hutsegite-probabilitatea kalkulatzeko. | Oinarrizko erreferentzia gisa erabil daitezke, baina baliteke sentsoreen arteko erlazio konplexuak behar bezala ez modelatzea. |
+| Bagging (adibidez, Random Forest) | Eredu independente batzuk entrenatzen ditu datu-lagin desberdinekin, eta haien emaitzak konbinatzen ditu. | Egokia da ezaugarrien arteko erlazio konplexuak modelatzeko eta predikzio egonkorragoak lortzeko. |
+| Boosting (adibidez, XGBoost) | Ereduak sekuentzialki entrenatzen ditu, aurreko ereduek egindako erroreak zuzentzen saiatuz. | Datuetan eredu konplexuak aurkitzeko eta sailkapen-errendimendua hobetzeko erabil daiteke. |
+
+Metodo linealen aldean, zuhaitzetan oinarritutako algoritmoek ez dute erlazio lineal bat suposatu behar ezaugarrien eta hutsegitearen artean. Hori abantaila izan daiteke CNC makinetako tenperatura, biraketa-abiadura, momentu eta erremintaren higaduraren arteko erlazioak aztertzeko.
+
+##### Bagging eta Boosting tekniken arteko desberdintasuna
+
+Random Forest eta XGBoost ensemble learning edo eredu konbinatuen familiakoak dira, baina estrategia desberdinak erabiltzen dituzte.
+
+- **Bagging:** hainbat eredu independente entrenatzen dira datu-lagin desberdinekin. Ondoren, haien emaitzak konbinatzen dira. Random Forest teknika horretan oinarritzen da, erabakien zuhaitzen iragarpenak konbinatuz.
+- **Boosting:** ereduak bata bestearen ondoren entrenatzen dira. Eredu berri bakoitzak aurrekoek egindako erroreak zuzentzen saiatzen da. XGBoost teknika horretan oinarritzen da.
+
+Bi teknikek hainbat ereduren emaitzak konbinatzen dituzte, baina entrenamendu-estrategia desberdina dute. Horregatik, biak probatu dira CNC Guard sistemarako zein den egokiena aztertzeko.
+
+##### Zergatik aukeratu dira Random Forest eta XGBoost?
+
+Random Forest aukeratu da lehen hautagai gisa, hainbat erabakien zuhaitzen emaitzak konbinatzen dituelako. Horri esker, ezaugarrien arteko erlazio ez-linealak modelatzeko aukera ematen du, eta zuhaitz bakar baten menpekotasuna murrizten du. Gainera, ezaugarrien garrantzia aztertzeko aukera eskaintzen du, eta hori erabilgarria da hutsegiteetan eragin handiena duten sentsore-neurketak identifikatzeko.
+
+XGBoost bigarren hautagai gisa aukeratu da, boosting estrategia erabiltzen duelako. Aurreko zuhaitzen erroreak zuzentzen joateak sailkapen-errendimendu ona lortzen lagun dezake, bereziki datuen arteko erlazio konplexuak daudenean. Horrela, Random Forest-en bagging estrategiarekin alderatzeko beste ikuspegi bat eskaintzen du.
+
+Azkenik, Random Forest + SMOTE konbinazioa ere aztertu da, algoritmoaren portaera klase-desoreka tratatzeko beste estrategia batekin alderatzeko. Horrela, algoritmoaren aukeraketaren eta datuak orekatzeko teknikaren eragina bereizita azter daiteke.
+
+Ez da metodo linealik entrenatu konparazio esperimentalean; Logistic Regression, esaterako, algoritmo-familia horren adibide teoriko gisa aipatu da. Benetako konparazioa Random Forest, XGBoost eta Random Forest + SMOTE estrategien artean egin da.
 
 #### A) Random Forest
 
@@ -932,6 +1063,35 @@ Azterketa horren arabera, 0,40ko atalasea hautatu da azken atalase operatibo gis
 
 Atalase hau ez da ereduaren berezko ezaugarri bat, baizik eta aplikazioaren behar operatiboetara egokitutako erabaki bat. Horregatik, predikzio-prozesuan probabilitateak kalkulatu eta 0,40ko balioarekin alderatzen dira.
 
+#### Ebaluazio-metriken eta atalasearen aukeraketaren justifikazioa
+
+CNC Guard sisteman, eredua ebaluatzeko ezin da Accuracy edo zehaztasun orokorra bakarrik erabili. Izan ere, datu-multzoa oso desorekatuta dagoenez, eredu batek erregistro gehienak zuzen sailka ditzake hutsegiteak behar bezala detektatu gabe.
+
+Horregatik, lau metrika nagusi erabili dira:
+
+- **Recall:** benetako hutsegiteetatik zenbat detektatzen diren neurtzen du. Metrika hau bereziki garrantzitsua da mantentze prediktiboan, hutsegite bat detektatu gabe uzteak ustekabeko geldialdiak eta ekoizpen-galerak eragin baititzake.
+- **Precision:** hutsegite gisa iragarritako kasuetatik zenbat diren benetako hutsegiteak neurtzen du. Balio altu batek alarma faltsuak eta beharrezkoak ez diren ikuskapenak murrizten laguntzen du.
+- **F1-score:** Precision eta Recall metrikak bateratzen dituen batezbesteko harmonikoa da. Bi alderdien arteko oreka aztertzeko erabiltzen da.
+- **ROC-AUC:** ereduak hutsegiteak eta hutsegiterik gabeko kasuak bereizteko duen gaitasuna neurtzen du, erabaki-atalase jakin batean soilik oinarritu gabe.
+
+Metrika horiek batera aztertzea erabaki egokia da, sistemak ez duelako soilik hutsegiteak detektatu behar: alarma faltsuen kopurua ere kontrolatu behar du, mantentze-taldearen lana eraginkorra izan dadin.
+
+##### Zergatik aukeratu da 0,40ko atalasea?
+
+Scikit-learn liburutegian sailkapen bitarrerako ohiko atalasea 0,50 da. Hala ere, atalase hori ez da beti egokiena industria-ingurune batean.
+
+CNC Guard sisteman, 0,30, 0,40 eta 0,50 atalaseak alderatu dira. Atalasea 0,50etik 0,40ra jaisteak ereduak hutsegite gisa sailkatzeko aukera handiagoa ematen du. Horrek benetako hutsegite gehiago detektatzen lagun dezake, baina positibo faltsuen kopurua handitzeko arriskua ere badu.
+
+Erabakia hartzerakoan bi errore mota hartu dira kontuan:
+
+- **False Negative (FN):** benetako hutsegite bat ez detektatzea. Horrek ustekabeko makina-geldialdiak eta ekoizpen-galerak eragin ditzake.
+- **False Positive (FP):** hutsegiterik ez dagoenean alarma sortzea. Horrek beharrezkoak ez diren ikuskapenak eta mantentze-lanak eragin ditzake.
+
+Proiektu honetan, FN kasuek ondorio operatibo larriagoak izan ditzakete; hala ere, FP gehiegi sortzeak mantentze-taldearen baliabideak alferrik erabiltzea eragin dezake. Horregatik, bi erroreen arteko oreka bilatu da, Recall eta Precision batera aztertuz.
+
+Azken konparazioan, Random Forest ereduak 0,40ko atalasearekin 0,8148ko Precision eta 0,8148ko Recall lortu ditu. Horrek erakusten du eredua gai dela benetako hutsegiteen %81,48 detektatzeko, eta hutsegite gisa iragarritako kasuen %81,48 benetako hutsegiteak direla.
+
+Horrenbestez, 0,40ko atalasea aukeratu da CNC Guard sistemaren erabilera operatiborako, hutsegiteak detektatzeko gaitasuna eta alarma faltsuen kontrola orekatzeko. Atalasea ez da balio unibertsal edo behin betikotzat hartu behar: benetako ekoizpen-ingurunean, mantentze-kostuak, geldialdien kostu ekonomikoa eta sistemaren benetako portaera kontuan hartuta berrikusi beharko litzateke.
 ### 4.7. Ezaugarrien garrantzia (Feature Importance) eta ereduaren biltegiratzea (`.pkl`)
 Random Forest eredua aukeratu ondoren, ereduak hutsegiteak aurreikusteko gehien erabiltzen dituen ezaugarriak aztertu dira. Horretarako, `feature_importances_` atributua erabili da.
 
@@ -1058,6 +1218,19 @@ Sistema prediktibo industrial batek hainbat arau eta praktika on bete behar ditu
 
 3. **Alborapenak (Biases):**
    * Makina mota ezberdinen artean (`L` - Low, `M` - Medium, `H` - High) alborapenik ez gertatzeko, eredua ezaugarri espezifiko hauek kontuan hartuz elikatu da (One-Hot Encoding bidez). Horrela, sistemak ez du makina indartsuago bat (H) akatstduntzat hartuko berezko tenperatura edo Torque balio altuagoak izateagatik, makinaren testuingurua ulertzen baitu.
+
+4. **Azalgarritasuna eta giza gainbegiratzea (XAI eta Human Oversight):**
+   CNC Guard sisteman Random Forest eredua erabiltzen denez, garrantzitsua da haren iragarpenak interpretatzeko aukera izatea. Horretarako, entrenamenduaren ondoren `feature_importances_` atributua erabili da, ezaugarri bakoitzak ereduaren erabakietan duen garrantzi erlatiboa aztertzeko.
+
+Hala ere, garrantzitsua da kontuan hartzea ezaugarrien garrantziak ez duela azaltzen iragarpen zehatz bakoitza zergatik egin den, ezta kausalitate-harremanik frogatzen ere. Horregatik, emaitza horiek ereduaren portaera orokorra ulertzeko erreferentzia gisa erabili behar dira, eta ez erabaki bakoitzaren azalpen oso gisa.
+
+Etorkizunean, SHAP bezalako XAI teknikak integra daitezke, makina bakoitzaren iragarpen batean ezaugarri bakoitzak duen ekarpena modu zehatzagoan aztertzeko.
+
+Bestalde, CNC Guard laguntza-sistema prediktibo gisa diseinatu da. Sistemak matxura-arriskuaren probabilitatea kalkulatzen du eta alerta-mailak sortzen ditu, baina azken mantentze-erabakia langile teknikoek hartu behar dute. Teknikariek sentsoreen neurketak, alertaren testuingurua eta makinaren benetako egoera aztertu behar dituzte esku-hartzea erabaki aurretik.
+
+Giza gainbegiratze horrek ereduaren iragarpenetan gehiegizko konfiantza izatea saihesten laguntzen du, eta erabaki kritikoak pertsona arduradunen kontrolpean mantentzen ditu.
+
+Azkenik, industria-datuak konfidentzialtasunez tratatu behar dira. Sentsoreen informazioa eta ereduaren iragarpenak baimendutako erabiltzaile eta zerbitzuek soilik eskuratu behar dituzte. Datu horiek pertsona identifikagarriekin lotuta badaude, GDPRren datu-babeseko betebeharrak ere hartu beharko dira kontuan. Era berean, AI Act araudiaren aplikagarritasuna sistemaren erabilera-helburuaren eta testuinguruaren arabera aztertu behar da; ezin da automatikoki ondorioztatu industria-sistema oro arrisku handiko sistema denik.
 
 ### 5.6. Dockerizazioa eta egiaztapen-probak (`curl`, `/health` eta `/predict`)
 APIa plataformarekiko independentea izan dadin, Docker bidez ontziratu da `python:3.11-slim` irudi arina erabiliz. Dockerfile-ak beharrezko mendekotasunak instalatzen ditu (`requirements.txt`) eta Uvicorn zerbitzaria abiarazten du 8000 portuan.
