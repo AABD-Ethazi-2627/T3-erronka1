@@ -1145,7 +1145,7 @@ Bide hauetako bakoitzean **`ReplaceText`** prozesadore bat dago, jatorrizko datu
 Dashboard:
 
 
-![alt text](DashboardGenerala.png)
+![alt text](images/DashboardGenerala.png)
 
 
 ### 7.1. Kibana Data View eta Index Pattern-en konfigurazioa
