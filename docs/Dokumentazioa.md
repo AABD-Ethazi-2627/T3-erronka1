@@ -1322,7 +1322,7 @@ Bide hauetako bakoitzean **`ReplaceText`** prozesadore bat dago, jatorrizko datu
 Dashboard:
 
 
-![Dashboard:](images/Dashboards/DashboardGenerala.png)
+![Dashboard:](images/Dashboards/Fase3/DashboardGenerala.png)
 
 
 ### 7.1. Kibana Data View eta Index Pattern-en konfigurazioa
@@ -1331,7 +1331,7 @@ Dashboard:
 Data View:
 
 
-![Data View:](images/Dashboards/Dataview.png)
+![Data View:](images/Dashboards/Fase3/Dataview.png)
 
 
 ### 7.2. Panela eta bistaratzeak (KPIak, line chart-ak, heatmap-ak eta gertaera-taulak)
@@ -1343,25 +1343,25 @@ KPIak eta Metrika Nagusiak
 Hutsegite-probabilitate maximoa (Gauge/Termometroa): Arrisku-maila maximoa adierazten du (berdea/horia/gorria).
 
 
-![Hutsegite-probabilitate maximoa (Gauge/Termometroa):](images/Dashboards/Hutsegite-probabilitatemaximoa.png)
+![Hutsegite-probabilitate maximoa (Gauge/Termometroa):](images/Dashboards/Fase3/Hutsegite-probabilitatemaximoa.png)
 
 
 Akats Globalak: Instalazio osoko akatsen portzentaje orokorra.
 
 
-![Akats Globalak:](images/Dashboards/AkatsGlobalak.png)
+![Akats Globalak:](images/Dashboards/Fase3/AkatsGlobalak.png)
 
 
 Aktibo dauden Makinak: Une honetan funtzionatzen eta datuak bidaltzen ari diren CNC makina kopurua.
 
 
-![Aktibo dauden Makinak:](images/Dashboards/AktiboDaudenmakinak.png)
+![Aktibo dauden Makinak:](images/Dashboards/Fase3/AktiboDaudenmakinak.png)
 
 
 Tenperatura Media: Sentsore guztien batez besteko tenperatura orokorra.
 
 
-![Tenperatura Media:](images/Dashboards/TenperaturaMedia.png)
+![Tenperatura Media:](images/Dashboards/Fase3/TenperaturaMedia.png)
 
 
 Line Chart-ak
@@ -1370,13 +1370,13 @@ Line Chart-ak
 Tenperatura Sensore Datuen Media: Sentsoreen tenperaturaren bilakaera orokorra (media eta mediana) adierazten du denboran zehar.
 
 
-![Tenperatura Sensore Datuen Media:](images/Dashboards/TenperaturaSensoreDatuenMedia.png)
+![Tenperatura Sensore Datuen Media:](images/Dashboards/Fase3/TenperaturaSensoreDatuenMedia.png)
 
 
 Tenp bilakaera denboran zehar (makina bakoitzeko): Makina bakoitzaren tenperaturaren bilakaera indibiduala erakusten duen linea-grafiko anitza. Honen bidez, makina jakin baten berotze ez-ohikoak detektatzen dira.
 
 
-![Tenp bilakaera denboran zehar (makina bakoitzeko):](images/Dashboards/TenpBilakaeraDenboranZehar(MakinaBakoitzeko).png)
+![Tenp bilakaera denboran zehar (makina bakoitzeko):](images/Dashboards/Fase3/TenpBilakaeraDenboranZehar(MakinaBakoitzeko).png)
 
 
 Heatmap-ak eta Desgaste Matrizea
@@ -1385,7 +1385,7 @@ Heatmap-ak eta Desgaste Matrizea
 Matxura Portzentaia: Makina bakoitzaren matxura edo desgaste portzentajea erakusten du kolore-eskala baten bidez. Gorri dauden makinek premiazko mantentzea behar dutela adierazten du.
 
 
-![Matxura Portzentaia:](images/Dashboards/MatxuraPortzentaia.png)
+![Matxura Portzentaia:](images/Dashboards/Fase3/MatxuraPortzentaia.png)
 
 
 Gertaera-taulak
@@ -1394,7 +1394,7 @@ Gertaera-taulak
 Alerta Data: Azken alerten erregistro xehatua denbora errealeko taula batean (Makinak, Alerta lvl, Data). Horrela, teknikariek azken gertaera larriak auditatu ditzakete.
 
 
-![Alerta Data:](images/Dashboards/AlertaData.png)
+![Alerta Data:](images/Dashboards/Fase3/AlertaData.png)
 
 
 Beste Bistaratze Batzuk
@@ -1403,19 +1403,19 @@ Beste Bistaratze Batzuk
 Makinak eta Alertak: Arazo gehien dituzten makinak zerrendatzen ditu, alerta motaren arabera desglosatuta (KONTUZ vs LARRIA).
 
 
-![Makinak eta Alertak:](images/Dashboards/MakinaketaAlertak.png)
+![Makinak eta Alertak:](images/Dashboards/Fase3/MakinaketaAlertak.png)
 
 
 Akats Kopurua Motaren Arabera: Akats mota bakoitzaren maiztasuna erakusten du.
 
 
-![Akats Kopurua Motaren Arabera:](images/Dashboards/AkatsKopuruaMotarenArabera.png)
+![Akats Kopurua Motaren Arabera:](images/Dashboards/Fase3/AkatsKopuruaMotarenArabera.png)
 
 
 Alerten Portzentaia: Sistemaren egoera orokorraren banaketa.
 
 
-![Alerten Portzentaia:](images/Dashboards/Donut.png)
+![Alerten Portzentaia:](images/Dashboards/Fase3/Donut.png)
 
 
 ### 7.3. Denbora errealeko monitorizazioa eta sentsoreen jarraipena

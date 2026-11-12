@@ -144,7 +144,7 @@ Ondorengo kapturan Kibana dashboard osoa ikus daiteke: hutsegite-tasa globala,
 makina aktiboen kopurua, tenperaturaren bilakaera, azken 50 gertaeren taula eta
 tresna-higaduraren eta hutsegite-maiztasunaren arteko erlazioa.
 
-![Kibana dashboard orokorra](./images/GrafikoGlobal.png)
+![Kibana dashboard orokorra](images/Dashboards/Fase1/GrafikoGlobal.png)
 
 ### Dashboardeko bistaratzeen kapturak
 
@@ -153,21 +153,22 @@ tresna-higaduraren eta hutsegite-maiztasunaren arteko erlazioa.
 Dashboardak hutsegiteen ehuneko globala erakusten du. Kapturan balioa
 **%3,28** da.
 
-![Hutsegite-tasa globala](./images/AkatsGlobal.png)
+![Hutsegite-tasa globala](images/Dashboards/Fase1/AkatsGlobalak.png)
 
 #### Makina aktiboak
 
 KPI honek denbora-tartean datuak bidali dituzten makina aktiboen kopurua
 erakusten du. Kapturan **50 makina** agertzen dira.
 
-![Makina aktiboen kopurua](./images/AktiboDaudenMakina.png)
+![Makina aktiboen kopurua](images/Dashboards/Fase1/AktiboDaudenMakina.png)
 
 #### Tenperaturaren bilakaera
 
 Grafikoak `air_temp_K` eremuaren bilakaera erakusten du denboran zehar,
 makina bakoitza bereizita.
 
-![Tenperaturaren bilakaera denboran zehar](./images/TempBilakaeraDenboranZehar.png)
+![Tenperaturaren bilakaera denboran zehar](images/Dashboards/Fase1/TempBilakaeraDenboranZehar.png)
+![alt text](image.png)
 
 #### Azken 50 gertaeren laburpena
 
@@ -175,7 +176,7 @@ Taulak azken 50 neurketak erakusten ditu, besteak beste `timestamp`,
 `machine_id`, `machine_type`, tenperaturak, `rpm`, `torque_Nm`,
 `tool_wear_min` eta `machine_failure` eremuekin.
 
-![Azken 50 gertaeren laburpena](./images/Azken50Gertaerarenlaburpena.png)
+![Azken 50 gertaeren laburpena](images/Dashboards/Fase1/Azken50Gertaerarenlaburpena.png)
 
 #### Tresna-higadura eta hutsegite-maiztasuna
 
@@ -183,7 +184,7 @@ Heatmap-ak `tool_wear_min` tarteak eta makina bakoitzeko hutsegite-maiztasuna
 erlazionatzen ditu. Kolore eta balio desberdinek hutsegiteen kontzentrazioa
 identifikatzen laguntzen dute.
 
-![Tresna-higadura eta hutsegite-maiztasuna](./images/Tresna-HigaduraVSHutsegite-Maiztasuna.png)
+![Tresna-higadura eta hutsegite-maiztasuna](images/Dashboards/Fase1/Tresna-HigaduraVSHutsegite-Maiztasuna.png)
 
 Datuak iritsi diren egiaztatzeko:
 
