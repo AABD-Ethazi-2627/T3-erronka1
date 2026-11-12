@@ -168,7 +168,6 @@ Grafikoak `air_temp_K` eremuaren bilakaera erakusten du denboran zehar,
 makina bakoitza bereizita.
 
 ![Tenperaturaren bilakaera denboran zehar](images/Dashboards/Fase1/TempBilakaeraDenboranZehar.png)
-![alt text](image.png)
 
 #### Azken 50 gertaeren laburpena
 
