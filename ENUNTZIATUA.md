@@ -145,11 +145,11 @@ izango lirateke garrantzitsuenak? Zergatik?
 
 ### Entregablea — 1. Fasea
 
-- [ ] `filebeat/filebeat.yml` osatuta eta funtzionala
-- [ ] NiFi flow funtzionala (`.json` exportatua)
-- [ ] Elasticsearch `cnc-sensors` indizea sortuta eta datuak barruan
-- [ ] Kibana dashboard-aren screenshot-ak (4 bistaratzeekin)
-- [ ] README laburra: zer datu dauden, nola antolatuta, eta pipeline-aren azalpena
+- [x] `filebeat/filebeat.yml` osatuta eta funtzionala
+- [x] NiFi flow funtzionala (`.json` exportatua)
+- [x] Elasticsearch `cnc-sensors` indizea sortuta eta datuak barruan
+- [x] Kibana dashboard-aren screenshot-ak (4 bistaratzeekin)
+- [x] README laburra: zer datu dauden, nola antolatuta, eta pipeline-aren azalpena
 
 ---
 
